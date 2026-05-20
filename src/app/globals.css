@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-header: theme(colors.brand.dark);
+}
+
+body {
+  @apply min-h-screen bg-[#f5f7fb] text-slate-900 antialiased;
+}
+
+.input {
+  @apply w-full rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900 shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand;
+}
+
+.btn-primary {
+  @apply rounded-md bg-gradient-to-r from-[#0f766e] to-[#0f5f59] text-white shadow-sm hover:opacity-95;
+}
+
+.btn-secondary {
+  @apply rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+}
+
+@media print {
+  @page {
+    margin: 12mm 14mm;
+    size: a4 landscape;
+  }
+
+  body {
+    background: #fff !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
