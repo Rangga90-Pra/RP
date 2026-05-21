@@ -420,13 +420,13 @@ export function DashboardShell() {
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "personil" }, async () => {
         try {
-          const p = await cloudApi.fetchPersonil(client, profile, bf);
+          const p = await cloudApi.fetchPersonil(client, profile, null);
           setPersonil(p);
         } catch {}
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "kendaraan" }, async () => {
         try {
-          const k = await cloudApi.fetchKendaraan(client, profile, bf);
+          const k = await cloudApi.fetchKendaraan(client, profile, null);
           setKendaraan(k);
         } catch {}
       })
@@ -667,15 +667,9 @@ export function DashboardShell() {
     return transactions.filter((t) => !t.branchId || t.branchId === effectiveWriteBranchId);
   }, [transactions, cloud, effectiveWriteBranchId]);
 
-  const personilScoped = useMemo(() => {
-    if (!cloud || !effectiveWriteBranchId) return personil;
-    return personil.filter((p) => !p.branchId || p.branchId === effectiveWriteBranchId);
-  }, [personil, cloud, effectiveWriteBranchId]);
-
-  const kendaraanScoped = useMemo(() => {
-    if (!cloud || !effectiveWriteBranchId) return kendaraan;
-    return kendaraan.filter((k) => !k.branchId || k.branchId === effectiveWriteBranchId);
-  }, [kendaraan, cloud, effectiveWriteBranchId]);
+  // Personil dan kendaraan bersifat global — semua akun melihat dan bisa menggunakan semua data.
+  const personilScoped = useMemo(() => personil, [personil]);
+  const kendaraanScoped = useMemo(() => kendaraan, [kendaraan]);
 
   const savePersonilState = (next: Personil[]) => {
     const prev = personil;

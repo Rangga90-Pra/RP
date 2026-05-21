@@ -45,19 +45,11 @@ export async function deleteBranch(client: SupabaseClient, id: string): Promise<
 
 export async function fetchPersonil(
   client: SupabaseClient,
-  profile: UserProfile,
-  filterBranchId: string | null,
+  _profile: UserProfile,
+  _filterBranchId: string | null,
 ): Promise<Personil[]> {
-  let q = client.from("personil").select("*").order("nama_sopir");
-  if (profile.role === "ADMIN_PUSAT") {
-    if (filterBranchId) q = q.eq("branch_id", filterBranchId);
-  } else if (profile.role === "ID_MASTER") {
-    // ID Master bisa lihat semua data
-  } else {
-    if (!profile.branchId) throw new Error("Profil cabang belum memiliki branch_id.");
-    q = q.eq("branch_id", profile.branchId);
-  }
-  const { data, error } = await q;
+  // Personil bersifat global — semua akun melihat semua data tanpa filter cabang.
+  const { data, error } = await client.from("personil").select("*").order("nama_sopir");
   if (error) throw error;
   return (data ?? []).map((r) => mapPersonilRow(r as Parameters<typeof mapPersonilRow>[0]));
 }
@@ -81,19 +73,11 @@ export async function deletePersonil(client: SupabaseClient, id: string): Promis
 
 export async function fetchKendaraan(
   client: SupabaseClient,
-  profile: UserProfile,
-  filterBranchId: string | null,
+  _profile: UserProfile,
+  _filterBranchId: string | null,
 ): Promise<Kendaraan[]> {
-  let q = client.from("kendaraan").select("*").order("plat_nomor");
-  if (profile.role === "ADMIN_PUSAT") {
-    if (filterBranchId) q = q.eq("branch_id", filterBranchId);
-  } else if (profile.role === 'ID_MASTER') {
-    // ID Master bisa lihat semua data
-  } else {
-    if (!profile.branchId) throw new Error("Profil cabang belum memiliki branch_id.");
-    q = q.eq("branch_id", profile.branchId);
-  }
-  const { data, error } = await q;
+  // Kendaraan bersifat global — semua akun melihat semua data tanpa filter cabang.
+  const { data, error } = await client.from("kendaraan").select("*").order("plat_nomor");
   if (error) throw error;
   return (data ?? []).map((r) => mapKendaraanRow(r as Parameters<typeof mapKendaraanRow>[0]));
 }
