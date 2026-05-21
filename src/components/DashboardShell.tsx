@@ -1232,7 +1232,7 @@ export function DashboardShell() {
 
       <div className="ml-[260px] print:ml-0 print:w-full">
         <header className="flex min-h-16 flex-wrap items-center justify-end gap-3 border-b border-slate-200 bg-white px-4 py-2 print:hidden md:px-6">
-          {cloud && profile?.role === "ADMIN_PUSAT" && (
+          {cloud && profile?.role === "ADMIN_PUSAT" && ["dashboard", "inputRitase", "rekap"].includes(activeMenu) && (
             <div className="mr-auto flex flex-wrap items-end gap-3">
               <label className="text-[11px] font-medium text-slate-600">
                 <span className="mb-0.5 block">Filter cabang (tampilan)</span>
