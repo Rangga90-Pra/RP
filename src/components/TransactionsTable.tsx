@@ -27,7 +27,7 @@ export function TransactionsTable({ rows, onEdit, onDelete }: Props) {
             <th className="px-2 py-2 whitespace-nowrap">Tanggal</th>
             <th className="px-2 py-2">Sopir</th>
             <th className="px-2 py-2">Plat</th>
-            <th className="px-2 py-2">Paket</th>
+            <th className="px-2 py-2">Muatan</th>
             <th className="px-2 py-2 min-w-[100px]">Ambil</th>
             <th className="px-2 py-2 min-w-[100px]">Bongkar</th>
             <th className="px-2 py-2 text-right">Km</th>
