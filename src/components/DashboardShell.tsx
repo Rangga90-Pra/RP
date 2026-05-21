@@ -2250,6 +2250,240 @@ export function DashboardShell() {
               <div className="print:hidden">
                 <DetailList title={detailTitle} rows={detailList} />
               </div>
+
+              {/* ═══ PRINT ONLY: Rincian (halaman 2 dst) ═══ */}
+              <div className="hidden print:block break-before-page">
+                <h2 className="text-base font-bold text-slate-900 mb-1">
+                  Rincian {REKAP_TAB_LABEL[rekapTab]}
+                </h2>
+                <p className="text-[11px] text-slate-500 mb-5">
+                  Periode: {formatRekapPeriode(rekapDateFilter.tanggalMulai, rekapDateFilter.tanggalAkhir)}
+                  &nbsp;·&nbsp; Total {rekapGrandTotals.totalRitase} ritase
+                </p>
+
+                {/* Rincian per Sopir */}
+                {rekapTab === "sopir" && rekapSopir.map((r) => {
+                  const trips = rekapFilteredTransactions
+                    .filter((t) => t.namaSopir === r.namaSopir && t.statusSopir === r.statusSopir)
+                    .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+                  if (!trips.length) return null;
+                  return (
+                    <div key={`${r.namaSopir}__${r.statusSopir}`} className="mb-6 break-inside-avoid-page">
+                      <div className="flex items-baseline gap-3 mb-1 border-b border-slate-300 pb-1">
+                        <span className="text-sm font-semibold text-slate-900">{r.namaSopir}</span>
+                        <span className="text-[11px] text-slate-500">{r.statusSopir} · {r.totalRitase} ritase · {r.totalKm} km</span>
+                      </div>
+                      <table className="w-full text-[10px] border border-slate-200">
+                        <thead className="bg-slate-100 text-slate-700">
+                          <tr>
+                            <th className="px-2 py-1 text-center w-7">No</th>
+                            <th className="px-2 py-1 text-left">Tanggal</th>
+                            <th className="px-2 py-1 text-left">Muatan</th>
+                            <th className="px-2 py-1 text-left">Lokasi Ambil</th>
+                            <th className="px-2 py-1 text-left">Lokasi Kirim</th>
+                            <th className="px-2 py-1 text-right">KM</th>
+                            <th className="px-2 py-1 text-right">Upah Ritase</th>
+                            <th className="px-2 py-1 text-right">Upah Pokok</th>
+                            <th className="px-2 py-1 text-right">Total Upah</th>
+                            <th className="px-2 py-1 text-right">Solar</th>
+                            <th className="px-2 py-1 text-right">Total Biaya</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {trips.map((t, i) => (
+                            <tr key={t.id} className="border-t border-slate-100">
+                              <td className="px-2 py-1 text-center text-slate-400">{i + 1}</td>
+                              <td className="px-2 py-1">{t.tanggal}</td>
+                              <td className="px-2 py-1">{t.namaPaketPekerjaan || "-"}</td>
+                              <td className="px-2 py-1">{t.lokasiAmbil || "-"}</td>
+                              <td className="px-2 py-1">{t.lokasiKirim || "-"}</td>
+                              <td className="px-2 py-1 text-right">{t.jarakKm}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.upahRitase)}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.upahPokok)}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.totalUpahSopir)}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.totalSolar)}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.totalBiaya)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
+                            <td colSpan={6} className="px-2 py-1">Subtotal</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalUpahRitase)}</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalUpahPokok)}</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalUpahSopir)}</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalSolar)}</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalBiaya)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  );
+                })}
+
+                {/* Rincian per Muatan */}
+                {rekapTab === "paket" && rekapPaket.map((r) => {
+                  const trips = rekapFilteredTransactions
+                    .filter((t) => (t.namaPaketPekerjaan || "(kosong)") === r.a)
+                    .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+                  if (!trips.length) return null;
+                  return (
+                    <div key={r.a} className="mb-6 break-inside-avoid-page">
+                      <div className="flex items-baseline gap-3 mb-1 border-b border-slate-300 pb-1">
+                        <span className="text-sm font-semibold text-slate-900">{r.a}</span>
+                        <span className="text-[11px] text-slate-500">{r.totalRitase} ritase · {r.totalKm} km</span>
+                      </div>
+                      <table className="w-full text-[10px] border border-slate-200">
+                        <thead className="bg-slate-100 text-slate-700">
+                          <tr>
+                            <th className="px-2 py-1 text-center w-7">No</th>
+                            <th className="px-2 py-1 text-left">Tanggal</th>
+                            <th className="px-2 py-1 text-left">Sopir</th>
+                            <th className="px-2 py-1 text-left">Lokasi Ambil</th>
+                            <th className="px-2 py-1 text-left">Lokasi Kirim</th>
+                            <th className="px-2 py-1 text-right">KM</th>
+                            <th className="px-2 py-1 text-right">Total Upah</th>
+                            <th className="px-2 py-1 text-right">Solar</th>
+                            <th className="px-2 py-1 text-right">Total Biaya</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {trips.map((t, i) => (
+                            <tr key={t.id} className="border-t border-slate-100">
+                              <td className="px-2 py-1 text-center text-slate-400">{i + 1}</td>
+                              <td className="px-2 py-1">{t.tanggal}</td>
+                              <td className="px-2 py-1">{t.namaSopir}</td>
+                              <td className="px-2 py-1">{t.lokasiAmbil || "-"}</td>
+                              <td className="px-2 py-1">{t.lokasiKirim || "-"}</td>
+                              <td className="px-2 py-1 text-right">{t.jarakKm}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.totalUpahSopir)}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.totalSolar)}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.totalBiaya)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
+                            <td colSpan={6} className="px-2 py-1">Subtotal</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalUpahSopir)}</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalSolar)}</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalBiaya)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  );
+                })}
+
+                {/* Rincian per Kendaraan */}
+                {rekapTab === "kendaraan" && rekapKendaraan.map((r) => {
+                  const trips = rekapFilteredTransactions
+                    .filter((t) => t.jenisKendaraan === r.a && t.platNomor === r.b)
+                    .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+                  if (!trips.length) return null;
+                  return (
+                    <div key={`${r.a}__${r.b}`} className="mb-6 break-inside-avoid-page">
+                      <div className="flex items-baseline gap-3 mb-1 border-b border-slate-300 pb-1">
+                        <span className="text-sm font-semibold text-slate-900">{r.a} — {r.b}</span>
+                        <span className="text-[11px] text-slate-500">{r.totalRitase} ritase · {r.totalKm} km</span>
+                      </div>
+                      <table className="w-full text-[10px] border border-slate-200">
+                        <thead className="bg-slate-100 text-slate-700">
+                          <tr>
+                            <th className="px-2 py-1 text-center w-7">No</th>
+                            <th className="px-2 py-1 text-left">Tanggal</th>
+                            <th className="px-2 py-1 text-left">Sopir</th>
+                            <th className="px-2 py-1 text-left">Muatan</th>
+                            <th className="px-2 py-1 text-left">Lokasi Ambil</th>
+                            <th className="px-2 py-1 text-left">Lokasi Kirim</th>
+                            <th className="px-2 py-1 text-right">KM</th>
+                            <th className="px-2 py-1 text-right">Total Upah</th>
+                            <th className="px-2 py-1 text-right">Solar</th>
+                            <th className="px-2 py-1 text-right">Total Biaya</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {trips.map((t, i) => (
+                            <tr key={t.id} className="border-t border-slate-100">
+                              <td className="px-2 py-1 text-center text-slate-400">{i + 1}</td>
+                              <td className="px-2 py-1">{t.tanggal}</td>
+                              <td className="px-2 py-1">{t.namaSopir}</td>
+                              <td className="px-2 py-1">{t.namaPaketPekerjaan || "-"}</td>
+                              <td className="px-2 py-1">{t.lokasiAmbil || "-"}</td>
+                              <td className="px-2 py-1">{t.lokasiKirim || "-"}</td>
+                              <td className="px-2 py-1 text-right">{t.jarakKm}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.totalUpahSopir)}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.totalSolar)}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.totalBiaya)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
+                            <td colSpan={7} className="px-2 py-1">Subtotal</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalUpahSopir)}</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalSolar)}</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalBiaya)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  );
+                })}
+
+                {/* Rincian per Rute */}
+                {rekapTab === "rute" && rekapRute.map((r) => {
+                  const trips = rekapFilteredTransactions
+                    .filter((t) => t.lokasiAmbil === r.a && t.lokasiKirim === r.b)
+                    .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+                  if (!trips.length) return null;
+                  return (
+                    <div key={`${r.a}__${r.b}`} className="mb-6 break-inside-avoid-page">
+                      <div className="flex items-baseline gap-3 mb-1 border-b border-slate-300 pb-1">
+                        <span className="text-sm font-semibold text-slate-900">{r.a} → {r.b}</span>
+                        <span className="text-[11px] text-slate-500">{r.totalRitase} ritase · {r.totalKm} km</span>
+                      </div>
+                      <table className="w-full text-[10px] border border-slate-200">
+                        <thead className="bg-slate-100 text-slate-700">
+                          <tr>
+                            <th className="px-2 py-1 text-center w-7">No</th>
+                            <th className="px-2 py-1 text-left">Tanggal</th>
+                            <th className="px-2 py-1 text-left">Sopir</th>
+                            <th className="px-2 py-1 text-left">Muatan</th>
+                            <th className="px-2 py-1 text-right">KM</th>
+                            <th className="px-2 py-1 text-right">Total Upah</th>
+                            <th className="px-2 py-1 text-right">Solar</th>
+                            <th className="px-2 py-1 text-right">Total Biaya</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {trips.map((t, i) => (
+                            <tr key={t.id} className="border-t border-slate-100">
+                              <td className="px-2 py-1 text-center text-slate-400">{i + 1}</td>
+                              <td className="px-2 py-1">{t.tanggal}</td>
+                              <td className="px-2 py-1">{t.namaSopir}</td>
+                              <td className="px-2 py-1">{t.namaPaketPekerjaan || "-"}</td>
+                              <td className="px-2 py-1 text-right">{t.jarakKm}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.totalUpahSopir)}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.totalSolar)}</td>
+                              <td className="px-2 py-1 text-right">{formatRupiah(t.totalBiaya)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
+                            <td colSpan={5} className="px-2 py-1">Subtotal</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalUpahSopir)}</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalSolar)}</td>
+                            <td className="px-2 py-1 text-right">{formatRupiah(r.totalBiaya)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* ═══ END PRINT RINCIAN ═══ */}
             </>
           )}
 
