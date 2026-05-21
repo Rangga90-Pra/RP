@@ -157,7 +157,7 @@ create policy "profiles_select_own_or_pusat"
   to authenticated
   using (
     id = auth.uid()
-    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'ADMIN_PUSAT')
+    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('ADMIN_PUSAT', 'ID_MASTER'))
   );
 
 drop policy if exists "profiles_update_own_cabang" on public.profiles;

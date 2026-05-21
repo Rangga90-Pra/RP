@@ -1140,11 +1140,16 @@ export function DashboardShell() {
     setOtorisasiLoading(true);
     try {
       const client = getSupabaseBrowserClient();
-      const { data } = await client
+      const { data, error } = await client
         .from("pengajuan_otorisasi")
-        .select("*, profiles(*)")
+        .select("*, profiles(id, email, full_name, role)")
         .order("created_at", { ascending: false });
-      setOtorisasiList((data ?? []) as PengajuanOtorisasi[]);
+      if (error) {
+        console.error("fetchOtorisasiList error:", error.message, error.code);
+        setDataLoadError("Gagal memuat daftar pengajuan: " + error.message);
+      } else {
+        setOtorisasiList((data ?? []) as PengajuanOtorisasi[]);
+      }
     } finally {
       setOtorisasiLoading(false);
     }
