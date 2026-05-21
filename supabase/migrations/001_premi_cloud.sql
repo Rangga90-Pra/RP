@@ -183,10 +183,7 @@ drop policy if exists "personil_select" on public.personil;
 create policy "personil_select"
   on public.personil for select
   to authenticated
-  using (
-    exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'ADMIN_PUSAT')
-    or branch_id = (select p.branch_id from public.profiles p where p.id = auth.uid())
-  );
+  using (true); -- semua akun dapat melihat semua personil (global)
 
 drop policy if exists "personil_insert" on public.personil;
 create policy "personil_insert"
@@ -220,10 +217,7 @@ drop policy if exists "kendaraan_select" on public.kendaraan;
 create policy "kendaraan_select"
   on public.kendaraan for select
   to authenticated
-  using (
-    exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'ADMIN_PUSAT')
-    or branch_id = (select p.branch_id from public.profiles p where p.id = auth.uid())
-  );
+  using (true); -- semua akun dapat melihat semua kendaraan (global)
 
 drop policy if exists "kendaraan_insert" on public.kendaraan;
 create policy "kendaraan_insert"
