@@ -74,7 +74,7 @@ type RekapTab = "sopir" | "paket" | "kendaraan" | "rute";
 
 const REKAP_TAB_LABEL: Record<RekapTab, string> = {
   sopir: "Rekap Sopir",
-  paket: "Rekap Paket",
+  paket: "Rekap Material",
   kendaraan: "Rekap Kendaraan",
   rute: "Rekap Rute",
 };
@@ -1521,7 +1521,7 @@ export function DashboardShell() {
                         {activeKendaraan.map((k) => <option key={k.id} value={k.id}>{k.platNomor} - {k.jenisKendaraan}</option>)}
                       </select>
                     </Field>
-                    <Field label="Nama Paket Pekerjaan"><input className="input h-11" value={ritaseForm.namaPaketPekerjaan} onChange={(e) => setRitaseForm((f) => ({ ...f, namaPaketPekerjaan: e.target.value }))} /></Field>
+                    <Field label="Jenis Material"><input className="input h-11" value={ritaseForm.namaPaketPekerjaan} onChange={(e) => setRitaseForm((f) => ({ ...f, namaPaketPekerjaan: e.target.value }))} /></Field>
                     <Field label="Lokasi Ambil"><input className="input h-11" value={ritaseForm.lokasiAmbil} onChange={(e) => setRitaseForm((f) => ({ ...f, lokasiAmbil: e.target.value }))} /></Field>
                     <Field label="Lokasi Kirim"><input className="input h-11" value={ritaseForm.lokasiKirim} onChange={(e) => setRitaseForm((f) => ({ ...f, lokasiKirim: e.target.value }))} /></Field>
                     <Field label="Jam berangkat"><input type="time" className="input h-11" value={ritaseForm.jamAmbil} onChange={(e) => setRitaseForm((f) => ({ ...f, jamAmbil: e.target.value }))} /></Field>
@@ -1898,7 +1898,7 @@ export function DashboardShell() {
                     onChange={(e) => setRekapTab(e.target.value as RekapTab)}
                   >
                     <option value="sopir">Rekap Sopir</option>
-                    <option value="paket">Rekap Paket</option>
+                    <option value="paket">Rekap Material</option>
                     <option value="kendaraan">Rekap Kendaraan</option>
                     <option value="rute">Rekap Rute</option>
                   </select>
@@ -1986,7 +1986,7 @@ export function DashboardShell() {
               )}
               {rekapTab === "paket" && (
                 <RekapTable
-                  headers={["Nama Paket Pekerjaan", "Total Ritase", "Total KM", "Total Upah Ritase", "Total Upah Pokok", "Total Upah Sopir", "Total Solar", "Total Biaya"]}
+                  headers={["Jenis Material", "Total Ritase", "Total KM", "Total Upah Ritase", "Total Upah Pokok", "Total Upah Sopir", "Total Solar", "Total Biaya"]}
                   numericMinCol={1}
                   rows={rekapPaket.map((r) => [r.a, r.totalRitase, r.totalKm, formatRupiah(r.totalUpahRitase), formatRupiah(r.totalUpahPokok), formatRupiah(r.totalUpahSopir), formatRupiah(r.totalSolar), formatRupiah(r.totalBiaya)])}
                   footerRow={[

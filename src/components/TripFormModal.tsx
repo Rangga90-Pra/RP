@@ -177,7 +177,7 @@ export function TripFormModal({
             />
           </label>
           <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
-            Nama paket pekerjaan
+            Jenis material
             <input
               value={form.namaPaket}
               onChange={(e) => set("namaPaket", e.target.value)}

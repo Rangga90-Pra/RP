@@ -105,7 +105,7 @@ export function RekapSection({ allTrips, vehicleRules, filters }: Props) {
   const tabLabel = (t: RekapTab) =>
     ({
       sopir: "Rekap per sopir",
-      paket: "Rekap per paket pekerjaan",
+      paket: "Rekap per material",
       truk: "Rekap per kendaraan",
       rute: "Rekap per rute",
     })[t];
@@ -113,7 +113,7 @@ export function RekapSection({ allTrips, vehicleRules, filters }: Props) {
   const groupingHeader = (): string =>
     ({
       sopir: "Sopir",
-      paket: "Paket pekerjaan",
+      paket: "Jenis Material",
       truk: "Jenis kendaraan / truk",
       rute: "Rute (ambil → bongkar)",
     })[tab];
@@ -159,7 +159,7 @@ export function RekapSection({ allTrips, vehicleRules, filters }: Props) {
           {(
             [
               ["sopir", "Per sopir"],
-              ["paket", "Per paket"],
+              ["paket", "Per material"],
               ["truk", "Per kendaraan"],
               ["rute", "Per rute"],
             ] as const
