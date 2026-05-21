@@ -1851,7 +1851,7 @@ export function DashboardShell() {
                           Print
                         </button>
                       ) : profile?.role === "ADMIN_PUSAT" ? (
-                        <span className="text-xs text-amber-600 self-center">Print terkunci ï¿½ ajukan otorisasi</span>
+                        <span className="text-xs text-amber-600 self-center">Print terkunci — ajukan otorisasi</span>
                       ) : null}
                     </div>
                   </div>
