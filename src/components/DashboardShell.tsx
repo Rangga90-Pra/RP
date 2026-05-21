@@ -264,7 +264,7 @@ export function DashboardShell() {
   const [allBranches, setAllBranches] = useState<Branch[]>([]);
   /** Filter lihat data (Admin Pusat): "" = semua cabang. */
   const [filterBranchId, setFilterBranchId] = useState("");
-  /** Cabang untuk input ritase/aset (Admin Pusat wajib pilih). */
+  /** Cabang tujuan migrasi localStorage → Supabase (hanya di Settings). */
   const [pusatWriteBranchId, setPusatWriteBranchId] = useState("");
   const [branchAdminForm, setBranchAdminForm] = useState({ name: "", code: "" });
   const [migrateMsg, setMigrateMsg] = useState<string | null>(null);
@@ -655,9 +655,8 @@ export function DashboardShell() {
 
   const effectiveWriteBranchId = useMemo(() => {
     if (!cloud || !profile) return null;
-    if (profile.role === "ADMIN_CABANG") return profile.branchId ?? null;
-    return pusatWriteBranchId || null;
-  }, [cloud, profile, pusatWriteBranchId]);
+    return profile.branchId ?? null;
+  }, [cloud, profile]);
 
   const transactionsForConflict = useMemo(() => {
     if (!cloud || !effectiveWriteBranchId) return transactions;
@@ -742,7 +741,7 @@ export function DashboardShell() {
     if (!nama) return;
     const bid = effectiveWriteBranchId;
     if (cloud && !bid) {
-      setPersonilSubmitError("Pilih cabang untuk input data (Admin Pusat — dropdown di header).");
+      setPersonilSubmitError("Akun belum ditautkan ke cabang. Hubungi Admin untuk mengatur akun ini.");
       return;
     }
     const key = normalizeNamaSopirKey(nama);
@@ -780,7 +779,7 @@ export function DashboardShell() {
     if (!plat) return;
     const bid = effectiveWriteBranchId;
     if (cloud && !bid) {
-      setKendaraanSubmitError("Pilih cabang untuk input data (Admin Pusat — dropdown di header).");
+      setKendaraanSubmitError("Akun belum ditautkan ke cabang. Hubungi Admin untuk mengatur akun ini.");
       return;
     }
     const key = normalizePlatNomorKey(plat);
@@ -1037,7 +1036,7 @@ export function DashboardShell() {
       await cloudApi.deleteBranch(client, id);
       setAllBranches((prev) => prev.filter((b) => b.id !== id));
       if (filterBranchId === id) setFilterBranchId("");
-      if (pusatWriteBranchId === id) setPusatWriteBranchId("");
+      if (pusatWriteBranchId === id) setPusatWriteBranchId(""); // reset migrasi jika cabang dihapus
     } catch (err) {
       setDataLoadError(err instanceof Error ? err.message : String(err));
     }
@@ -1122,9 +1121,8 @@ export function DashboardShell() {
     }
   };
   const mainNavItems = useMemo(() => {
-    if (profile?.role === "ADMIN_PUSAT" || profile?.role === "ID_MASTER") return [MAIN_MENU[0], ...CABANG_MENU, ...MAIN_MENU.slice(1)];
     return MAIN_MENU;
-  }, [profile?.role]);
+  }, []);
 
   const bottomNavItems = useMemo(() => {
     if (!cloud) return BOTTOM_MENU;
@@ -1193,21 +1191,6 @@ export function DashboardShell() {
                   onChange={(e) => setFilterBranchId(e.target.value)}
                 >
                   <option value="">Semua cabang</option>
-                  {allBranches.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-[11px] font-medium text-slate-600">
-                <span className="mb-0.5 block">Cabang untuk input data</span>
-                <select
-                  className="input h-9 max-w-[220px] text-sm"
-                  value={pusatWriteBranchId}
-                  onChange={(e) => setPusatWriteBranchId(e.target.value)}
-                >
-                  <option value="">— pilih cabang —</option>
                   {allBranches.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name}
