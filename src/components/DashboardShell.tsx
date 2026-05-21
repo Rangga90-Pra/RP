@@ -1103,6 +1103,19 @@ export function DashboardShell() {
     setLoadingPengajuan(false);
   };
 
+  const handleBatalkanPengajuan = async () => {
+    if (!pengajuanId || pengajuanStatus !== "PENDING") return;
+    if (!confirm("Batalkan pengajuan otorisasi ini? Kamu bisa mengajukan ulang setelah memperbaiki rekap.")) return;
+    setLoadingPengajuan(true);
+    const client = getSupabaseBrowserClient();
+    await client.from("pengajuan_otorisasi").delete().eq("id", pengajuanId);
+    setPengajuanId(null);
+    setPengajuanStatus(null);
+    setPrintTokenExp(null);
+    setCeklisSopir({});
+    setLoadingPengajuan(false);
+  };
+
   const handleOtorisasi = async (disetujui: boolean) => {
     if (!pengajuanId || !profile) return;
     setLoadingPengajuan(true);
@@ -1180,6 +1193,8 @@ export function DashboardShell() {
 
   const mainNavItems = useMemo(() => {
     if (profile?.role === "ADMIN_CABANG") return MAIN_MENU.filter((m) => m.id !== "dashboard");
+    // Admin Pusat hanya melihat & mengajukan otorisasi rekap, tidak input ritase
+    if (profile?.role === "ADMIN_PUSAT") return MAIN_MENU.filter((m) => m.id !== "inputRitase");
     if (profile?.role === "ID_MASTER") return [...MAIN_MENU, ...OTORISASI_MENU];
     return MAIN_MENU;
   }, [profile?.role]);
@@ -1700,8 +1715,21 @@ export function DashboardShell() {
               {(activePersonil.length === 0 || activeKendaraan.length === 0) && (
                 <Warning text="Isi data Aset Personil dan Aset Kendaraan terlebih dahulu." />
               )}
-              <div className="grid gap-4 lg:grid-cols-3">
-                <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
+              {/* Layout: tabel di kiri, form di kanan */}
+              <div className="flex flex-col-reverse gap-4 lg:flex-row lg:items-start">
+                {/* KIRI: Detail Aktivitas */}
+                <div className="min-w-0 flex-1">
+                  <TransactionsTable
+                    rows={ritaseHistoryTransactions}
+                    onDetail={setDetail}
+                    onDelete={(id) => saveTransactionsState(transactions.filter((t) => t.id !== id))}
+                  />
+                  {detail && <TransactionDetail row={detail} onClose={() => setDetail(null)} />}
+                </div>
+                {/* KANAN: Form + Hasil Perhitungan */}
+                <div className="flex w-full flex-col gap-4 lg:w-[420px] lg:flex-shrink-0">
+              <div className="grid gap-4">
+                <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   <h3 className="mb-3 text-sm font-semibold">Data Ritase</h3>
                   {/* Selector cabang khusus Admin Pusat */}
                   {cloud && profile?.role === "ADMIN_PUSAT" && (
@@ -1994,12 +2022,8 @@ export function DashboardShell() {
                   )}
                 </section>
               </div>
-              <TransactionsTable
-                rows={ritaseHistoryTransactions}
-                onDetail={setDetail}
-                onDelete={(id) => saveTransactionsState(transactions.filter((t) => t.id !== id))}
-              />
-              {detail && <TransactionDetail row={detail} onClose={() => setDetail(null)} />}
+                </div>
+              </div>
             </>
           )}
 
@@ -2096,9 +2120,31 @@ export function DashboardShell() {
               </section>              {/* Banner status otorisasi */}
               {profile?.role === "ADMIN_PUSAT" && pengajuanStatus && (
                 <div className={`rounded-xl border p-4 mb-2 flex items-center justify-between flex-wrap gap-3 ${pengajuanStatus === "DISETUJUI" ? "bg-green-50 border-green-200" : pengajuanStatus === "DITOLAK" ? "bg-red-50 border-red-200" : "bg-yellow-50 border-yellow-200"}`}>
-                  <div className="text-sm font-semibold">
-                    Status: {pengajuanStatus === "DISETUJUI" ? "Disetujui" : pengajuanStatus === "DITOLAK" ? "Ditolak" : "Menunggu Otorisasi"}
+                  <div>
+                    <div className="text-sm font-semibold">
+                      Status: {pengajuanStatus === "DISETUJUI" ? "✅ Disetujui" : pengajuanStatus === "DITOLAK" ? "❌ Ditolak" : "⏳ Menunggu Otorisasi"}
+                    </div>
+                    {pengajuanStatus === "DITOLAK" && (
+                      <div className="text-xs text-red-700 mt-1">Pengajuan ditolak. Perbaiki rekap dan ajukan ulang.</div>
+                    )}
                   </div>
+                  {pengajuanStatus === "PENDING" && (
+                    <button
+                      onClick={handleBatalkanPengajuan}
+                      disabled={loadingPengajuan}
+                      className="h-9 px-4 rounded-lg text-sm font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50"
+                    >
+                      {loadingPengajuan ? "Membatalkan..." : "Batalkan Pengajuan"}
+                    </button>
+                  )}
+                  {pengajuanStatus === "DITOLAK" && (
+                    <button
+                      onClick={() => { setPengajuanId(null); setPengajuanStatus(null); setPrintTokenExp(null); setCeklisSopir({}); }}
+                      className="h-9 px-4 rounded-lg text-sm font-semibold text-white bg-slate-500 hover:bg-slate-600"
+                    >
+                      Ajukan Ulang
+                    </button>
+                  )}
                 </div>
               )}
               {profile?.role === "ADMIN_PUSAT" && !pengajuanStatus && rekapSopir.length > 0 && (
