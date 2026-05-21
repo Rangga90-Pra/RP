@@ -52,7 +52,6 @@ import {
 } from "@/lib/storage";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import * as cloudApi from "@/lib/supabase/api";
-import { migrateLocalStorageToSupabase } from "@/lib/migrateLocalStorageToSupabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { TripleSBrandMark } from "@/components/TripleSBrandMark";
 import type { PengajuanOtorisasi, StatusPengajuan } from "@/lib/otorisasi/types";
@@ -270,12 +269,7 @@ export function DashboardShell() {
   const [allBranches, setAllBranches] = useState<Branch[]>([]);
   /** Filter lihat data (Admin Pusat): "" = semua cabang. */
   const [filterBranchId, setFilterBranchId] = useState("");
-  /** Cabang tujuan migrasi localStorage → Supabase (hanya di Settings). */
-  const [pusatWriteBranchId, setPusatWriteBranchId] = useState("");
   const [branchAdminForm, setBranchAdminForm] = useState({ name: "", code: "" });
-  const [migrateMsg, setMigrateMsg] = useState<string | null>(null);
-  const [migrateErr, setMigrateErr] = useState<string | null>(null);
-  const [migrating, setMigrating] = useState(false);
 
   const [personilForm, setPersonilForm] = useState(defaultPersonilForm);
   const [editPersonilId, setEditPersonilId] = useState<string | null>(null);
@@ -1051,7 +1045,6 @@ export function DashboardShell() {
       await cloudApi.deleteBranch(client, id);
       setAllBranches((prev) => prev.filter((b) => b.id !== id));
       if (filterBranchId === id) setFilterBranchId("");
-      if (pusatWriteBranchId === id) setPusatWriteBranchId(""); // reset migrasi jika cabang dihapus
     } catch (err) {
       setDataLoadError(err instanceof Error ? err.message : String(err));
     }
@@ -2264,58 +2257,6 @@ export function DashboardShell() {
           {activeMenu === "settings" && (
             <>
               <PageTitle title="Settings" subtitle="Pengaturan aplikasi" />
-              {cloud && profile?.role === "ADMIN_PUSAT" && (
-                <section className="max-w-2xl rounded-xl border border-teal-200 bg-teal-50/60 p-5 shadow-sm">
-                  <h3 className="text-base font-semibold text-slate-900">Migrasi dari localStorage</h3>
-                  <p className="mt-2 text-sm text-slate-700">
-                    Pindahkan data lama peramban (personil, kendaraan, transaksi, pengaturan) ke cloud untuk cabang
-                    yang dipilih.
-                  </p>
-                  <div className="mt-3 flex flex-wrap items-end gap-2">
-                    <label className="text-xs font-medium text-slate-600">
-                      <span className="mb-1 block">Cabang tujuan migrasi</span>
-                      <select
-                        className="input h-11 max-w-xs"
-                        value={pusatWriteBranchId}
-                        onChange={(e) => setPusatWriteBranchId(e.target.value)}
-                      >
-                        <option value="">— pilih cabang —</option>
-                        {allBranches.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <button
-                      type="button"
-                      disabled={migrating || !pusatWriteBranchId}
-                      className="btn-primary h-11 px-4 disabled:opacity-50"
-                      onClick={() => {
-                        if (!pusatWriteBranchId) return;
-                        setMigrating(true);
-                        setMigrateMsg(null);
-                        setMigrateErr(null);
-                        void migrateLocalStorageToSupabase(pusatWriteBranchId)
-                          .then((r) => {
-                            if (r.ok) setMigrateMsg(r.message);
-                            else setMigrateErr(r.message);
-                          })
-                          .catch((e) => setMigrateErr(e instanceof Error ? e.message : String(e)))
-                          .finally(() => setMigrating(false));
-                      }}
-                    >
-                      {migrating ? "Memigrasi…" : "Migrasi sekarang"}
-                    </button>
-                  </div>
-                  {migrateMsg && <p className="mt-2 text-sm text-teal-900">{migrateMsg}</p>}
-                  {migrateErr && (
-                    <p className="mt-2 text-sm text-rose-800" role="alert">
-                      {migrateErr}
-                    </p>
-                  )}
-                </section>
-              )}
               <section className="space-y-4">
                 <div className="max-w-2xl rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <h3 className="text-base font-semibold text-slate-900">Pengaturan Solar</h3>
