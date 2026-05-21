@@ -1782,7 +1782,7 @@ export function DashboardShell() {
                   <TripleSBrandMark className="h-11 w-11 shrink-0 print:h-[52px] print:w-[52px]" />
                   <div className="min-w-0">
                     <p className="text-[10px] font-semibold uppercase leading-tight tracking-widest text-slate-500 sm:text-[11px]">
-                      TRIPLE S INDOSEDULUR Â· Construction
+                      TRIPLE S INDOSEDULUR · Construction
                     </p>
                   </div>
                 </div>
@@ -2700,7 +2700,7 @@ function TransactionsTable({
               <td className="px-2 py-2 whitespace-nowrap tabular-nums text-slate-800">{r.jamAmbil}</td>
               <td className="px-2 py-2 whitespace-nowrap tabular-nums text-slate-800">{r.jamKirim}</td>
               <td className="px-2 py-2 whitespace-nowrap text-slate-700" title={r.kategoriMuatan === "BALIK" ? labelMuatanKembali(r.muatanKembaliJenis) : ""}>
-                {r.kategoriMuatan === "UTAMA" ? "Utama" : `Kembali Â· ${r.muatanKembaliJenis === "KOSONG" ? "Kosong" : "Isi"}`}
+                {r.kategoriMuatan === "UTAMA" ? "Utama" : `Kembali · ${r.muatanKembaliJenis === "KOSONG" ? "Kosong" : "Isi"}`}
               </td>
               <td className="px-2 py-2">{r.namaSopir}</td>
               <td className="px-2 py-2"><StatusSopirBadge value={r.statusSopir} /></td>
