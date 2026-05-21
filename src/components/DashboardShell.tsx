@@ -269,6 +269,8 @@ export function DashboardShell() {
   const [allBranches, setAllBranches] = useState<Branch[]>([]);
   /** Filter lihat data (Admin Pusat): "" = semua cabang. */
   const [filterBranchId, setFilterBranchId] = useState("");
+  /** Cabang tujuan input ritase untuk Admin Pusat (tidak punya branchId sendiri). */
+  const [inputWriteBranchId, setInputWriteBranchId] = useState("");
   const [branchAdminForm, setBranchAdminForm] = useState({ name: "", code: "" });
 
   const [personilForm, setPersonilForm] = useState(defaultPersonilForm);
@@ -279,6 +281,7 @@ export function DashboardShell() {
   const [kendaraanSubmitError, setKendaraanSubmitError] = useState("");
 
   const [ritaseForm, setRitaseForm] = useState(defaultRitaseForm);
+  const [ritaseSubmitError, setRitaseSubmitError] = useState("");
   const [hasilPerhitunganOpen, setHasilPerhitunganOpen] = useState(false);
   const [selectedPersonilId, setSelectedPersonilId] = useState("");
   const [selectedKendaraanId, setSelectedKendaraanId] = useState("");
@@ -670,8 +673,10 @@ export function DashboardShell() {
 
   const effectiveWriteBranchId = useMemo(() => {
     if (!cloud || !profile) return null;
+    // Admin Pusat tidak punya branchId sendiri — pakai pilihan cabang dari form input
+    if (profile.role === "ADMIN_PUSAT") return inputWriteBranchId || null;
     return profile.branchId ?? null;
-  }, [cloud, profile]);
+  }, [cloud, profile, inputWriteBranchId]);
 
   const transactionsForConflict = useMemo(() => {
     if (!cloud || !effectiveWriteBranchId) return transactions;
@@ -823,7 +828,11 @@ export function DashboardShell() {
     const selectedK = kendaraan.find((k) => k.id === selectedKendaraanId);
     if (!selectedP || !selectedK) return;
     const bid = effectiveWriteBranchId;
-    if (cloud && !bid) return;
+    if (cloud && !bid) {
+      setRitaseSubmitError("Pilih cabang tujuan input terlebih dahulu.");
+      return;
+    }
+    setRitaseSubmitError("");
     if (isJamTibaBeforeJamBerangkat(ritaseForm.jamAmbil, ritaseForm.jamKirim)) return;
     if (muatanKembaliTanpaUraian) return;
     if (
@@ -1694,6 +1703,27 @@ export function DashboardShell() {
               <div className="grid gap-4 lg:grid-cols-3">
                 <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
                   <h3 className="mb-3 text-sm font-semibold">Data Ritase</h3>
+                  {/* Selector cabang khusus Admin Pusat */}
+                  {cloud && profile?.role === "ADMIN_PUSAT" && (
+                    <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5">
+                      <label className="text-xs font-semibold text-blue-800">
+                        Cabang tujuan input
+                      </label>
+                      <select
+                        className="input mt-1 h-9 w-full text-sm"
+                        value={inputWriteBranchId}
+                        onChange={(e) => { setInputWriteBranchId(e.target.value); setRitaseSubmitError(""); }}
+                      >
+                        <option value="">— Pilih cabang —</option>
+                        {allBranches.map((b) => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                      {ritaseSubmitError && (
+                        <p className="mt-1 text-xs text-red-600 font-medium">{ritaseSubmitError}</p>
+                      )}
+                    </div>
+                  )}
                   <form onSubmit={submitRitase} className="grid gap-3 md:grid-cols-2">
                     <Field label="Tanggal"><input type="date" className="input h-11" value={ritaseForm.tanggal} onChange={(e) => setRitaseForm((f) => ({ ...f, tanggal: e.target.value }))} /></Field>
                     <Field label="Sopir">
