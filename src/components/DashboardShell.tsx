@@ -12,6 +12,7 @@ import {
   LogOut,
   Printer,
   Settings,
+  ShieldCheck,
   Truck,
   UserSquare2,
 } from "lucide-react";
@@ -54,6 +55,7 @@ import * as cloudApi from "@/lib/supabase/api";
 import { migrateLocalStorageToSupabase } from "@/lib/migrateLocalStorageToSupabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { TripleSBrandMark } from "@/components/TripleSBrandMark";
+import type { PengajuanOtorisasi, StatusPengajuan } from "@/lib/otorisasi/types";
 import type {
   AppSettings,
   Branch,
@@ -69,7 +71,7 @@ import type {
   StatusSopir,
 } from "@/lib/types";
 
-type MenuKey = "dashboard" | "cabang" | "inputRitase" | "rekap" | "personil" | "kendaraan" | "settings";
+type MenuKey = "dashboard" | "cabang" | "inputRitase" | "rekap" | "personil" | "kendaraan" | "settings" | "otorisasi";
 type RekapTab = "sopir" | "paket" | "kendaraan" | "rute";
 
 const REKAP_TAB_LABEL: Record<RekapTab, string> = {
@@ -96,6 +98,10 @@ const BOTTOM_MENU: Array<{ id: MenuKey; label: string; icon: React.ComponentType
 
 const CABANG_MENU: Array<{ id: MenuKey; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: "cabang", label: "Cabang", icon: Building2 },
+];
+
+const OTORISASI_MENU: Array<{ id: MenuKey; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+  { id: "otorisasi", label: "Otorisasi", icon: ShieldCheck },
 ];
 
 /** Password Settings hanya dipakai mode lokal (tanpa Supabase). */
@@ -292,6 +298,14 @@ export function DashboardShell() {
   const [ceklisSopir, setCeklisSopir] = useState<Record<string, boolean>>({})
   const [loadingPengajuan, setLoadingPengajuan] = useState(false)
   const [showOtorisasiModal, setShowOtorisasiModal] = useState(false)
+
+  // ── STATE PANEL OTORISASI (ID_MASTER) ──
+  const [otorisasiList, setOtorisasiList] = useState<PengajuanOtorisasi[]>([])
+  const [otorisasiLoading, setOtorisasiLoading] = useState(false)
+  const [selectedPengajuanId, setSelectedPengajuanId] = useState<string | null>(null)
+  const [otorisasiFilter, setOtorisasiFilter] = useState<"SEMUA" | StatusPengajuan>("SEMUA")
+  const [otorisasiCatatan, setOtorisasiCatatan] = useState("")
+  const [otorisasiActionLoading, setOtorisasiActionLoading] = useState(false)
   const [catatanOtorisasi, setCatatanOtorisasi] = useState("")
 
   const [settingsUnlocked, setSettingsUnlocked] = useState(false);
@@ -308,6 +322,9 @@ export function DashboardShell() {
   const handleMenuChange = (id: MenuKey) => {
     if (id === "rekap") {
       void fetchPengajuanTerbaru();
+    }
+    if (id === "otorisasi") {
+      void fetchOtorisasiList();
     }
     if (id === "settings") {
       if (cloud && profile?.role !== "ADMIN_PUSAT" && profile?.role !== "ID_MASTER") return;
@@ -1075,7 +1092,7 @@ export function DashboardShell() {
             untuk_user: m.id,
             judul: "Pengajuan Otorisasi Baru",
             pesan: `${profile.email} mengajukan otorisasi rekap "${REKAP_TAB_LABEL[rekapTab]}".`,
-            link: "/master/otorisasi?id=" + data.id,
+            link: "/dashboard",
             tipe: "PENGAJUAN",
           })),
         );
@@ -1118,8 +1135,46 @@ export function DashboardShell() {
       }
     }
   };
+  const fetchOtorisasiList = async () => {
+    if (!cloud || profile?.role !== "ID_MASTER") return;
+    setOtorisasiLoading(true);
+    try {
+      const client = getSupabaseBrowserClient();
+      const { data } = await client
+        .from("pengajuan_otorisasi")
+        .select("*, profiles(*)")
+        .order("created_at", { ascending: false });
+      setOtorisasiList((data ?? []) as PengajuanOtorisasi[]);
+    } finally {
+      setOtorisasiLoading(false);
+    }
+  };
+
+  const handleProsesOtorisasiMaster = async (disetujui: boolean) => {
+    if (!selectedPengajuanId) return;
+    setOtorisasiActionLoading(true);
+    try {
+      const client = getSupabaseBrowserClient();
+      const { error } = await client.rpc("proses_otorisasi", {
+        p_pengajuan_id: selectedPengajuanId,
+        p_disetujui: disetujui,
+        p_catatan: otorisasiCatatan || null,
+      });
+      if (error) throw error;
+      setOtorisasiCatatan("");
+      await fetchOtorisasiList();
+    } catch (err) {
+      alert("Gagal memproses: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setOtorisasiActionLoading(false);
+    }
+  };
+
+  const pendingOtorisasiCount = otorisasiList.filter((p) => p.status === "PENDING").length;
+
   const mainNavItems = useMemo(() => {
     if (profile?.role === "ADMIN_CABANG") return MAIN_MENU.filter((m) => m.id !== "dashboard");
+    if (profile?.role === "ID_MASTER") return [...MAIN_MENU, ...OTORISASI_MENU];
     return MAIN_MENU;
   }, [profile?.role]);
 
@@ -1145,7 +1200,7 @@ export function DashboardShell() {
             </p>
           </div>
         </div>
-        <MenuGroup items={mainNavItems} activeMenu={activeMenu} onChange={setActiveMenu} />
+        <MenuGroup items={mainNavItems} activeMenu={activeMenu} onChange={handleMenuChange} badges={{ otorisasi: pendingOtorisasiCount }} />
         <p className="mt-5 mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Aset</p>
         <MenuGroup items={ASET_MENU} activeMenu={activeMenu} onChange={setActiveMenu} />
         <div className="mt-5">
@@ -1352,6 +1407,155 @@ export function DashboardShell() {
                   </table>
                 </div>
               </section>
+            </>
+          )}
+
+          {/* ── PANEL OTORISASI (ID_MASTER) ── */}
+          {activeMenu === "otorisasi" && profile?.role === "ID_MASTER" && (
+            <>
+              <PageTitle title="Panel Otorisasi" subtitle="Kelola pengajuan otorisasi dari Admin Pusat" />
+
+              {/* Filter status */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {(["SEMUA", "PENDING", "DISETUJUI", "DITOLAK"] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setOtorisasiFilter(s)}
+                    className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${
+                      otorisasiFilter === s
+                        ? "border-teal-600 bg-teal-600 text-white"
+                        : "border-slate-300 bg-white text-slate-600 hover:border-teal-400"
+                    }`}
+                  >
+                    {s}
+                    {s !== "SEMUA" && (
+                      <span className="ml-1.5 opacity-70">
+                        ({otorisasiList.filter((p) => p.status === s).length})
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
+                {/* Daftar pengajuan */}
+                <div className="flex flex-col gap-3">
+                  {otorisasiLoading ? (
+                    <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">Memuat...</div>
+                  ) : (otorisasiFilter === "SEMUA" ? otorisasiList : otorisasiList.filter((p) => p.status === otorisasiFilter)).length === 0 ? (
+                    <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">Tidak ada pengajuan</div>
+                  ) : (
+                    (otorisasiFilter === "SEMUA" ? otorisasiList : otorisasiList.filter((p) => p.status === otorisasiFilter)).map((p) => {
+                      const statusCfg = {
+                        PENDING:   { bg: "bg-amber-50 text-amber-800 border-amber-200", dot: "bg-amber-400", label: "Menunggu" },
+                        DISETUJUI: { bg: "bg-green-50 text-green-800 border-green-200", dot: "bg-green-500", label: "Disetujui" },
+                        DITOLAK:   { bg: "bg-red-50 text-red-800 border-red-200", dot: "bg-red-500", label: "Ditolak" },
+                      }[p.status];
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => setSelectedPengajuanId(p.id === selectedPengajuanId ? null : p.id)}
+                          className={`w-full rounded-xl border p-4 text-left transition hover:shadow-sm ${
+                            selectedPengajuanId === p.id
+                              ? "border-teal-400 bg-teal-50 shadow-sm"
+                              : "border-slate-200 bg-white"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold text-sm text-slate-800">
+                                {(p.profiles as { nama?: string; email?: string } | undefined)?.nama ?? (p.profiles as { nama?: string; email?: string } | undefined)?.email ?? "Admin Pusat"}
+                              </p>
+                              <p className="mt-0.5 text-xs text-slate-500">
+                                {p.jenis_rekap}
+                                {p.tanggal_mulai && ` · ${p.tanggal_mulai} s/d ${p.tanggal_akhir}`}
+                              </p>
+                              <p className="mt-1 text-[11px] text-slate-400">
+                                {new Date(p.created_at).toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
+                            <span className={`shrink-0 flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusCfg.bg}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${statusCfg.dot}`} />
+                              {statusCfg.label}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Panel detail */}
+                {selectedPengajuanId ? (() => {
+                  const sel = otorisasiList.find((p) => p.id === selectedPengajuanId);
+                  if (!sel) return null;
+                  return (
+                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-4 lg:self-start">
+                      <h3 className="mb-4 font-semibold text-slate-800">Detail Pengajuan</h3>
+                      <dl className="space-y-2 text-sm">
+                        {([
+                          ["Pengaju", (sel.profiles as { nama?: string } | undefined)?.nama ?? "-"],
+                          ["Email",  (sel.profiles as { email?: string } | undefined)?.email ?? "-"],
+                          ["Jenis Rekap", sel.jenis_rekap],
+                          ["Periode", sel.tanggal_mulai ? `${sel.tanggal_mulai} s/d ${sel.tanggal_akhir}` : "Semua tanggal"],
+                          ["Diajukan", new Date(sel.created_at).toLocaleString("id-ID")],
+                        ] as [string, string][]).map(([k, v]) => (
+                          <div key={k} className="flex gap-2">
+                            <dt className="w-28 shrink-0 text-slate-500">{k}</dt>
+                            <dd className="font-medium text-slate-800 break-all">{v}</dd>
+                          </div>
+                        ))}
+                        {sel.catatan && (
+                          <div className="flex gap-2">
+                            <dt className="w-28 shrink-0 text-slate-500">Catatan</dt>
+                            <dd className="text-slate-700">{sel.catatan}</dd>
+                          </div>
+                        )}
+                      </dl>
+
+                      {sel.status === "PENDING" ? (
+                        <div className="mt-5">
+                          <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                            Catatan (opsional)
+                          </label>
+                          <textarea
+                            value={otorisasiCatatan}
+                            onChange={(e) => setOtorisasiCatatan(e.target.value)}
+                            rows={3}
+                            placeholder="Tambahkan catatan jika diperlukan..."
+                            className="input w-full resize-y text-sm"
+                          />
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              onClick={() => void handleProsesOtorisasiMaster(false)}
+                              disabled={otorisasiActionLoading}
+                              className="flex-1 rounded-lg bg-red-500 py-2.5 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50"
+                            >
+                              ❌ Tolak
+                            </button>
+                            <button
+                              onClick={() => void handleProsesOtorisasiMaster(true)}
+                              disabled={otorisasiActionLoading}
+                              className="flex-1 rounded-lg bg-teal-600 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+                            >
+                              ✅ Setujui
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={`mt-4 rounded-lg p-3 text-sm ${sel.status === "DISETUJUI" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>
+                          {sel.status === "DISETUJUI" ? "✅ Disetujui" : "❌ Ditolak"} pada{" "}
+                          {sel.diproses_at ? new Date(sel.diproses_at).toLocaleString("id-ID") : "-"}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })() : (
+                  <div className="hidden rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-400 lg:flex lg:items-center lg:justify-center">
+                    Pilih pengajuan di sebelah kiri untuk melihat detail
+                  </div>
+                )}
+              </div>
             </>
           )}
 
@@ -2367,16 +2571,19 @@ function MenuGroup({
   items,
   activeMenu,
   onChange,
+  badges,
 }: {
   items: Array<{ id: MenuKey; label: string; icon: React.ComponentType<{ className?: string }> }>;
   activeMenu: MenuKey;
   onChange: (id: MenuKey) => void;
+  badges?: Partial<Record<MenuKey, number>>;
 }) {
   return (
     <div className="space-y-1">
       {items.map((item) => {
         const Icon = item.icon;
         const active = activeMenu === item.id;
+        const badge = badges?.[item.id];
         return (
           <button
             key={item.id}
@@ -2388,7 +2595,12 @@ function MenuGroup({
             }`}
           >
             <Icon className="h-4 w-4" />
-            {item.label}
+            <span className="flex-1 text-left">{item.label}</span>
+            {badge != null && badge > 0 && (
+              <span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${active ? "bg-white text-teal-700" : "bg-red-500 text-white"}`}>
+                {badge > 99 ? "99+" : badge}
+              </span>
+            )}
           </button>
         );
       })}
