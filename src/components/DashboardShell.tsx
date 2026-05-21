@@ -1032,7 +1032,6 @@ export function DashboardShell() {
       const b = await cloudApi.insertBranch(client, name, branchAdminForm.code.trim());
       setAllBranches((prev) => [...prev, b].sort((a, c) => a.name.localeCompare(c.name, "id")));
       setBranchAdminForm({ name: "", code: "" });
-      setMigrateErr(null);
     } catch (err) {
       setDataLoadError(err instanceof Error ? err.message : String(err));
     }
