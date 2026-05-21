@@ -52,7 +52,7 @@ export function usePengajuan(pengajuanId?: string) {
   const [loading, setLoading] = useState(false)
   const fetchPengajuan = useCallback(async (id: string) => {
     setLoading(true)
-    const { data } = await supabase.from("pengajuan_otorisasi").select("*, profiles(*)").eq("id", id).single()
+    const { data } = await supabase.from("pengajuan_otorisasi").select("*, profiles!pengajuan_otorisasi_diajukan_oleh_fkey(id, email, full_name, role)").eq("id", id).single()
     setPengajuan(data)
     setLoading(false)
   }, [])
@@ -66,7 +66,7 @@ export function useDaftarPengajuan(filter: "PENDING" | "SEMUA" = "SEMUA") {
   const [loading, setLoading] = useState(true)
   const fetch = useCallback(async () => {
     setLoading(true)
-    let query = supabase.from("pengajuan_otorisasi").select("*, profiles(*)").order("created_at", { ascending: false })
+    let query = supabase.from("pengajuan_otorisasi").select("*, profiles!pengajuan_otorisasi_diajukan_oleh_fkey(id, email, full_name, role)").order("created_at", { ascending: false })
     if (filter === "PENDING") query = query.eq("status", "PENDING")
     const { data } = await query
     setList(data ?? [])

@@ -1142,7 +1142,7 @@ export function DashboardShell() {
       const client = getSupabaseBrowserClient();
       const { data, error } = await client
         .from("pengajuan_otorisasi")
-        .select("*, profiles(id, email, full_name, role)")
+        .select("*, profiles!pengajuan_otorisasi_diajukan_oleh_fkey(id, email, full_name, role)")
         .order("created_at", { ascending: false });
       if (error) {
         console.error("fetchOtorisasiList error:", error.message, error.code);
