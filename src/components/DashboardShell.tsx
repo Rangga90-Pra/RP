@@ -1901,6 +1901,9 @@ export function DashboardShell() {
                       >
                         Simpan Ritase
                       </button>
+                      {ritaseSubmitError && (
+                        <p className="mt-2 text-sm text-red-600 font-medium">{ritaseSubmitError}</p>
+                      )}
                     </div>
                   </form>
                 </section>
