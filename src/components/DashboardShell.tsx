@@ -391,7 +391,11 @@ export function DashboardShell() {
       } catch (e) {
         if (!cancelled) setDataLoadError(e instanceof Error ? e.message : String(e));
       } finally {
-        if (!cancelled) setReady(true);
+        if (!cancelled) {
+          setReady(true);
+          // ADMIN_CABANG tidak punya fitur Dashboard — langsung ke Input Ritase
+          if (profile?.role === "ADMIN_CABANG") setActiveMenu("inputRitase");
+        }
       }
     }
     void load();
@@ -1121,8 +1125,9 @@ export function DashboardShell() {
     }
   };
   const mainNavItems = useMemo(() => {
+    if (profile?.role === "ADMIN_CABANG") return MAIN_MENU.filter((m) => m.id !== "dashboard");
     return MAIN_MENU;
-  }, []);
+  }, [profile?.role]);
 
   const bottomNavItems = useMemo(() => {
     if (!cloud) return BOTTOM_MENU;
