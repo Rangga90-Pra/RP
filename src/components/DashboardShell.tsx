@@ -1715,36 +1715,9 @@ export function DashboardShell() {
               {(activePersonil.length === 0 || activeKendaraan.length === 0) && (
                 <Warning text="Isi data Aset Personil dan Aset Kendaraan terlebih dahulu." />
               )}
-              {/* Layout: kiri=rekap+tabel, kanan=form */}
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-                {/* KIRI: Rekap ringkas + Detail Aktivitas */}
-                <div className="min-w-0 flex-1 flex flex-col gap-3">
-                  {/* Rekap ringkas */}
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    {[
-                      { label: "Total Ritase", value: ritaseHistoryTransactions.length },
-                      { label: "Total KM", value: ritaseHistoryTransactions.reduce((s, t) => s + t.jarakKm, 0) + " km" },
-                      { label: "Total Upah Sopir", value: formatRupiah(ritaseHistoryTransactions.reduce((s, t) => s + t.totalUpahSopir, 0)) },
-                      { label: "Total Biaya", value: formatRupiah(ritaseHistoryTransactions.reduce((s, t) => s + t.totalBiaya, 0)) },
-                    ].map(({ label, value }) => (
-                      <div key={label} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-                        <p className="text-[11px] text-slate-500">{label}</p>
-                        <p className="mt-0.5 text-sm font-semibold text-slate-900">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Detail Aktivitas */}
-                  <TransactionsTable
-                    rows={ritaseHistoryTransactions}
-                    onDetail={setDetail}
-                    onDelete={(id) => saveTransactionsState(transactions.filter((t) => t.id !== id))}
-                  />
-                  {detail && <TransactionDetail row={detail} onClose={() => setDetail(null)} />}
-                </div>
-                {/* KANAN: Form + Hasil Perhitungan */}
-                <div className="flex w-full flex-col gap-4 lg:w-[420px] lg:flex-shrink-0">
-              <div className="grid gap-4">
-                <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              {/* Form + Hasil Perhitungan */}
+              <div className="grid gap-4 lg:grid-cols-3">
+                <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
                   <h3 className="mb-3 text-sm font-semibold">Data Ritase</h3>
                   {/* Selector cabang khusus Admin Pusat */}
                   {cloud && profile?.role === "ADMIN_PUSAT" && (
@@ -2037,8 +2010,13 @@ export function DashboardShell() {
                   )}
                 </section>
               </div>
-                </div>
-              </div>
+              {/* Detail Aktivitas — berdiri sendiri di bawah form */}
+              <TransactionsTable
+                rows={ritaseHistoryTransactions}
+                onDetail={setDetail}
+                onDelete={(id) => saveTransactionsState(transactions.filter((t) => t.id !== id))}
+              />
+              {detail && <TransactionDetail row={detail} onClose={() => setDetail(null)} />}
             </>
           )}
 
