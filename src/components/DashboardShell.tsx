@@ -1715,10 +1715,25 @@ export function DashboardShell() {
               {(activePersonil.length === 0 || activeKendaraan.length === 0) && (
                 <Warning text="Isi data Aset Personil dan Aset Kendaraan terlebih dahulu." />
               )}
-              {/* Layout: tabel di kiri, form di kanan */}
-              <div className="flex flex-col-reverse gap-4 lg:flex-row lg:items-start">
-                {/* KIRI: Detail Aktivitas */}
-                <div className="min-w-0 flex-1">
+              {/* Layout: kiri=rekap+tabel, kanan=form */}
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                {/* KIRI: Rekap ringkas + Detail Aktivitas */}
+                <div className="min-w-0 flex-1 flex flex-col gap-3">
+                  {/* Rekap ringkas */}
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {[
+                      { label: "Total Ritase", value: ritaseHistoryTransactions.length },
+                      { label: "Total KM", value: ritaseHistoryTransactions.reduce((s, t) => s + t.jarakKm, 0) + " km" },
+                      { label: "Total Upah Sopir", value: formatRupiah(ritaseHistoryTransactions.reduce((s, t) => s + t.totalUpahSopir, 0)) },
+                      { label: "Total Biaya", value: formatRupiah(ritaseHistoryTransactions.reduce((s, t) => s + t.totalBiaya, 0)) },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+                        <p className="text-[11px] text-slate-500">{label}</p>
+                        <p className="mt-0.5 text-sm font-semibold text-slate-900">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Detail Aktivitas */}
                   <TransactionsTable
                     rows={ritaseHistoryTransactions}
                     onDetail={setDetail}
