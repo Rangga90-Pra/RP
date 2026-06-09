@@ -2734,7 +2734,7 @@ function TransactionsTable({
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
         <h3 className="text-sm font-semibold tracking-wide text-slate-900">DETAIL AKTIVITAS</h3>
-        {isIdMaster && pendingDeletes.size > 0 && (
+        {pendingDeletes.size > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-rose-600 font-medium">{pendingDeletes.size} data ditandai hapus</span>
             <button
