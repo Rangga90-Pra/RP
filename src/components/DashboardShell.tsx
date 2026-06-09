@@ -2716,15 +2716,11 @@ function TransactionsTable({
   const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
 
   const handleHapus = (id: string) => {
-    if (isIdMaster) {
-      setPendingDeletes((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) next.delete(id); else next.add(id);
-        return next;
-      });
-    } else {
-      onDelete(id);
-    }
+    setPendingDeletes((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
   const handleSimpan = () => {
