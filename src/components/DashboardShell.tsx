@@ -2713,11 +2713,51 @@ function TransactionsTable({
   branches?: Branch[];
   isIdMaster?: boolean;
 }) {
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+
+  const handleHapus = (id: string) => {
+    if (isIdMaster) {
+      setPendingDeletes((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+      });
+    } else {
+      onDelete(id);
+    }
+  };
+
+  const handleSimpan = () => {
+    pendingDeletes.forEach((id) => onDelete(id));
+    setPendingDeletes(new Set());
+  };
+
+  const handleBatal = () => setPendingDeletes(new Set());
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-      <h3 className="border-b border-slate-100 px-4 py-3 text-sm font-semibold tracking-wide text-slate-900">
-        DETAIL AKTIVITAS
-      </h3>
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <h3 className="text-sm font-semibold tracking-wide text-slate-900">DETAIL AKTIVITAS</h3>
+        {isIdMaster && pendingDeletes.size > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-rose-600 font-medium">{pendingDeletes.size} data ditandai hapus</span>
+            <button
+              type="button"
+              onClick={handleBatal}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleSimpan}
+              className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
+            >
+              Simpan Perubahan
+            </button>
+          </div>
+        )}
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[2040px] text-xs">
         <thead className="bg-slate-100 text-slate-600">
@@ -2745,40 +2785,55 @@ function TransactionsTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
-            <tr key={r.id} className="cursor-pointer border-t border-slate-100 hover:bg-teal-50/50" onClick={() => onDetail(r)}>
-              <td className="px-2 py-2">{i + 1}</td>
-              <td className="px-2 py-2">{r.tanggal}</td>
-              {isIdMaster && (
-                <td className="px-2 py-2 whitespace-nowrap">
-                  <span className="rounded-md bg-blue-100 px-2 py-0.5 text-blue-800 font-medium">
-                    {branches.find((b) => b.id === r.branchId)?.name ?? r.branchId ?? "—"}
-                  </span>
+          {rows.map((r, i) => {
+            const isPending = pendingDeletes.has(r.id);
+            return (
+              <tr
+                key={r.id}
+                className={`cursor-pointer border-t border-slate-100 ${isPending ? "bg-rose-50 opacity-50" : "hover:bg-teal-50/50"}`}
+                onClick={() => !isPending && onDetail(r)}
+              >
+                <td className="px-2 py-2">{i + 1}</td>
+                <td className={`px-2 py-2 ${isPending ? "line-through text-slate-400" : ""}`}>{r.tanggal}</td>
+                {isIdMaster && (
+                  <td className="px-2 py-2 whitespace-nowrap">
+                    <span className="rounded-md bg-blue-100 px-2 py-0.5 text-blue-800 font-medium">
+                      {branches.find((b) => b.id === r.branchId)?.name ?? r.branchId ?? "—"}
+                    </span>
+                  </td>
+                )}
+                <td className="px-2 py-2 whitespace-nowrap tabular-nums text-slate-800">{r.jamAmbil}</td>
+                <td className="px-2 py-2 whitespace-nowrap tabular-nums text-slate-800">{r.jamKirim}</td>
+                <td className="px-2 py-2 whitespace-nowrap text-slate-700" title={r.kategoriMuatan === "BALIK" ? labelMuatanKembali(r.muatanKembaliJenis) : ""}>
+                  {r.kategoriMuatan === "UTAMA" ? "Utama" : `Kembali · ${r.muatanKembaliJenis === "KOSONG" ? "Kosong" : "Isi"}`}
                 </td>
-              )}
-              <td className="px-2 py-2 whitespace-nowrap tabular-nums text-slate-800">{r.jamAmbil}</td>
-              <td className="px-2 py-2 whitespace-nowrap tabular-nums text-slate-800">{r.jamKirim}</td>
-              <td className="px-2 py-2 whitespace-nowrap text-slate-700" title={r.kategoriMuatan === "BALIK" ? labelMuatanKembali(r.muatanKembaliJenis) : ""}>
-                {r.kategoriMuatan === "UTAMA" ? "Utama" : `Kembali · ${r.muatanKembaliJenis === "KOSONG" ? "Kosong" : "Isi"}`}
-              </td>
-              <td className="px-2 py-2">{r.namaSopir}</td>
-              <td className="px-2 py-2"><StatusSopirBadge value={r.statusSopir} /></td>
-              <td className="px-2 py-2"><span className="rounded-md bg-amber-100 px-2 py-0.5">{r.jenisKendaraan}</span></td>
-              <td className="px-2 py-2">{r.platNomor}</td>
-              <td className="px-2 py-2">{r.namaPaketPekerjaan}</td>
-              <td className="px-2 py-2">{r.lokasiAmbil} - {r.lokasiKirim}</td>
-              <td className="px-2 py-2 text-right">{r.jarakKm}</td>
-              <td className="px-2 py-2"><MedanBadge value={r.jenisMedan} /></td>
-              <td className="px-2 py-2 whitespace-nowrap text-slate-700">
-                {r.kategoriMuatan === "UTAMA" ? labelJenisMuatan(r.jenisMuatan) : "—"}
-              </td>
-              <td className="px-2 py-2 max-w-[220px] break-words text-slate-700" title={formatKeteranganFallback(r.keterangan)}>{formatKeteranganTableCell(r.keterangan)}</td>
-              <td className="px-2 py-2 text-right">{formatRupiah(r.totalUpahSopir)}</td>
-              <td className="px-2 py-2 text-right">{formatRupiah(r.totalSolar)}</td>
-              <td className="px-2 py-2 text-right">{formatRupiah(r.totalBiaya)}</td>
-              <td className="px-2 py-2"><button onClick={(e) => { e.stopPropagation(); onDetail(r); }} className="mr-2 text-teal-700">Detail</button><button onClick={(e) => { e.stopPropagation(); onDelete(r.id); }} className="text-rose-600">Hapus</button></td>
-            </tr>
-          ))}
+                <td className="px-2 py-2">{r.namaSopir}</td>
+                <td className="px-2 py-2"><StatusSopirBadge value={r.statusSopir} /></td>
+                <td className="px-2 py-2"><span className="rounded-md bg-amber-100 px-2 py-0.5">{r.jenisKendaraan}</span></td>
+                <td className="px-2 py-2">{r.platNomor}</td>
+                <td className="px-2 py-2">{r.namaPaketPekerjaan}</td>
+                <td className="px-2 py-2">{r.lokasiAmbil} - {r.lokasiKirim}</td>
+                <td className="px-2 py-2 text-right">{r.jarakKm}</td>
+                <td className="px-2 py-2"><MedanBadge value={r.jenisMedan} /></td>
+                <td className="px-2 py-2 whitespace-nowrap text-slate-700">
+                  {r.kategoriMuatan === "UTAMA" ? labelJenisMuatan(r.jenisMuatan) : "—"}
+                </td>
+                <td className="px-2 py-2 max-w-[220px] break-words text-slate-700" title={formatKeteranganFallback(r.keterangan)}>{formatKeteranganTableCell(r.keterangan)}</td>
+                <td className="px-2 py-2 text-right">{formatRupiah(r.totalUpahSopir)}</td>
+                <td className="px-2 py-2 text-right">{formatRupiah(r.totalSolar)}</td>
+                <td className="px-2 py-2 text-right">{formatRupiah(r.totalBiaya)}</td>
+                <td className="px-2 py-2">
+                  {!isPending && <button onClick={(e) => { e.stopPropagation(); onDetail(r); }} className="mr-2 text-teal-700">Detail</button>}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleHapus(r.id); }}
+                    className={isPending ? "text-slate-400" : "text-rose-600"}
+                  >
+                    {isPending ? "Batalkan" : "Hapus"}
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       </div>
