@@ -352,7 +352,7 @@ export function DashboardShell() {
       setReady(false);
       try {
         const client = getSupabaseBrowserClient();
-        if (profile.role === "ADMIN_PUSAT") {
+        if (profile.role === "ADMIN_PUSAT" || profile.role === "ID_MASTER") {
           const br = await cloudApi.fetchBranches(client);
           if (!cancelled) setAllBranches(br);
         } else {
@@ -1695,6 +1695,8 @@ export function DashboardShell() {
                 rows={ritaseHistoryTransactions}
                 onDetail={setDetail}
                 onDelete={(id) => saveTransactionsState(transactions.filter((t) => t.id !== id))}
+                branches={allBranches}
+                isIdMaster={profile?.role === "ID_MASTER"}
               />
               {detail && <TransactionDetail row={detail} onClose={() => setDetail(null)} />}
             </>
@@ -2696,10 +2698,14 @@ function TransactionsTable({
   rows,
   onDetail,
   onDelete,
+  branches = [],
+  isIdMaster = false,
 }: {
   rows: SimpleTrip[];
   onDetail: (row: SimpleTrip) => void;
   onDelete: (id: string) => void;
+  branches?: Branch[];
+  isIdMaster?: boolean;
 }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -2712,6 +2718,7 @@ function TransactionsTable({
           <tr>
             <th className="px-2 py-2 text-left">No</th>
             <th className="px-2 py-2 text-left">Tanggal</th>
+            {isIdMaster && <th className="px-2 py-2 text-left">Cabang</th>}
             <th className="px-2 py-2 whitespace-nowrap text-left">Jam berangkat</th>
             <th className="px-2 py-2 whitespace-nowrap text-left">Jam tiba</th>
             <th className="px-2 py-2 whitespace-nowrap text-left">Kat. muatan</th>
@@ -2736,6 +2743,13 @@ function TransactionsTable({
             <tr key={r.id} className="cursor-pointer border-t border-slate-100 hover:bg-teal-50/50" onClick={() => onDetail(r)}>
               <td className="px-2 py-2">{i + 1}</td>
               <td className="px-2 py-2">{r.tanggal}</td>
+              {isIdMaster && (
+                <td className="px-2 py-2 whitespace-nowrap">
+                  <span className="rounded-md bg-blue-100 px-2 py-0.5 text-blue-800 font-medium">
+                    {branches.find((b) => b.id === r.branchId)?.name ?? r.branchId ?? "—"}
+                  </span>
+                </td>
+              )}
               <td className="px-2 py-2 whitespace-nowrap tabular-nums text-slate-800">{r.jamAmbil}</td>
               <td className="px-2 py-2 whitespace-nowrap tabular-nums text-slate-800">{r.jamKirim}</td>
               <td className="px-2 py-2 whitespace-nowrap text-slate-700" title={r.kategoriMuatan === "BALIK" ? labelMuatanKembali(r.muatanKembaliJenis) : ""}>
