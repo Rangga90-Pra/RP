@@ -398,14 +398,16 @@ export function DashboardShell() {
     const client = getSupabaseBrowserClient();
     const bf = profile.role === "ADMIN_PUSAT" ? (filterBranchId || null) : profile.branchId ?? null;
 
+    const refetchTransactions = async () => {
+      try {
+        const t = await cloudApi.fetchTransactions(client, profile, bf);
+        setTransactions(t);
+      } catch {}
+    };
+
     const channel = client
       .channel("realtime-premi")
-      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, async () => {
-        try {
-          const t = await cloudApi.fetchTransactions(client, profile, bf);
-          setTransactions(t);
-        } catch {}
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, refetchTransactions)
       .on("postgres_changes", { event: "*", schema: "public", table: "personil" }, async () => {
         try {
           const p = await cloudApi.fetchPersonil(client, profile, null);
@@ -420,8 +422,12 @@ export function DashboardShell() {
       })
       .subscribe();
 
+    // Polling fallback setiap 10 detik agar perubahan dari akun lain selalu sinkron
+    const poll = setInterval(refetchTransactions, 10000);
+
     return () => {
       void client.removeChannel(channel);
+      clearInterval(poll);
     };
   }, [cloud, profile, filterBranchId]);
 
