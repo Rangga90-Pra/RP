@@ -1690,19 +1690,15 @@ export function DashboardShell() {
                   )}
                 </section>
               </div>
-              {/* Detail Aktivitas — hanya untuk ADMIN_CABANG dan ADMIN_PUSAT */}
-              {profile?.role !== "ID_MASTER" && (
-                <>
-                  <TransactionsTable
-                    rows={ritaseHistoryTransactions}
-                    onDetail={setDetail}
-                    onDelete={(id) => saveTransactionsState(transactions.filter((t) => t.id !== id))}
-                    branches={allBranches}
-                    isIdMaster={false}
-                  />
-                  {detail && <TransactionDetail row={detail} onClose={() => setDetail(null)} />}
-                </>
-              )}
+              {/* Detail Aktivitas — berdiri sendiri di bawah form */}
+              <TransactionsTable
+                rows={ritaseHistoryTransactions}
+                onDetail={setDetail}
+                onDelete={(id) => saveTransactionsState(transactions.filter((t) => t.id !== id))}
+                branches={allBranches}
+                isIdMaster={profile?.role === "ID_MASTER"}
+              />
+              {detail && <TransactionDetail row={detail} onClose={() => setDetail(null)} />}
             </>
           )}
 
