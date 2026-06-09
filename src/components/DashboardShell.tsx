@@ -12,7 +12,6 @@ import {
   LogOut,
   Printer,
   Settings,
-  ShieldCheck,
   Truck,
   UserSquare2,
 } from "lucide-react";
@@ -54,7 +53,6 @@ import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase/c
 import * as cloudApi from "@/lib/supabase/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { TripleSBrandMark } from "@/components/TripleSBrandMark";
-import type { PengajuanOtorisasi, StatusPengajuan } from "@/lib/otorisasi/types";
 import type {
   AppSettings,
   Branch,
@@ -70,7 +68,7 @@ import type {
   StatusSopir,
 } from "@/lib/types";
 
-type MenuKey = "dashboard" | "cabang" | "inputRitase" | "rekap" | "personil" | "kendaraan" | "settings" | "otorisasi";
+type MenuKey = "dashboard" | "cabang" | "inputRitase" | "rekap" | "personil" | "kendaraan" | "settings";
 type RekapTab = "sopir" | "paket" | "kendaraan" | "rute";
 
 const REKAP_TAB_LABEL: Record<RekapTab, string> = {
@@ -99,9 +97,6 @@ const CABANG_MENU: Array<{ id: MenuKey; label: string; icon: React.ComponentType
   { id: "cabang", label: "Cabang", icon: Building2 },
 ];
 
-const OTORISASI_MENU: Array<{ id: MenuKey; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { id: "otorisasi", label: "Otorisasi", icon: ShieldCheck },
-];
 
 /** Password Settings hanya dipakai mode lokal (tanpa Supabase). */
 const SETTINGS_PASSWORD = "admin123";
@@ -289,21 +284,6 @@ export function DashboardShell() {
   const [detailList, setDetailList] = useState<SimpleTrip[]>([]);
   const [detailTitle, setDetailTitle] = useState("Detail");
   const [ready, setReady] = useState(false);
-  const [pengajuanId, setPengajuanId] = useState<string | null>(null)
-  const [pengajuanStatus, setPengajuanStatus] = useState<"PENDING" | "DISETUJUI" | "DITOLAK" | null>(null)
-  const [printTokenExp, setPrintTokenExp] = useState<string | null>(null)
-  const [ceklisSopir, setCeklisSopir] = useState<Record<string, boolean>>({})
-  const [loadingPengajuan, setLoadingPengajuan] = useState(false)
-  const [showOtorisasiModal, setShowOtorisasiModal] = useState(false)
-
-  // ── STATE PANEL OTORISASI (ID_MASTER) ──
-  const [otorisasiList, setOtorisasiList] = useState<PengajuanOtorisasi[]>([])
-  const [otorisasiLoading, setOtorisasiLoading] = useState(false)
-  const [selectedPengajuanId, setSelectedPengajuanId] = useState<string | null>(null)
-  const [otorisasiFilter, setOtorisasiFilter] = useState<"SEMUA" | StatusPengajuan>("SEMUA")
-  const [otorisasiCatatan, setOtorisasiCatatan] = useState("")
-  const [otorisasiActionLoading, setOtorisasiActionLoading] = useState(false)
-  const [catatanOtorisasi, setCatatanOtorisasi] = useState("")
 
   const [settingsUnlocked, setSettingsUnlocked] = useState(false);
   const [settingsPasswordModalOpen, setSettingsPasswordModalOpen] = useState(false);
@@ -317,12 +297,6 @@ export function DashboardShell() {
   };
 
   const handleMenuChange = (id: MenuKey) => {
-    if (id === "rekap") {
-      void fetchPengajuanTerbaru();
-    }
-    if (id === "otorisasi") {
-      void fetchOtorisasiList();
-    }
     if (id === "settings") {
       if (cloud && profile?.role !== "ADMIN_PUSAT" && profile?.role !== "ID_MASTER") return;
       if (cloud && (profile?.role === "ADMIN_PUSAT" || profile?.role === "ID_MASTER")) {
@@ -1059,143 +1033,12 @@ export function DashboardShell() {
   };
 
 
-  // ── FUNGSI OTORISASI ──
-  const canPrint =
-    pengajuanStatus === "DISETUJUI" && printTokenExp
-      ? new Date(printTokenExp) > new Date()
-      : false;
-
-  const semuaSopirDiceklis =
-    rekapSopir.length > 0 && rekapSopir.every((r) => ceklisSopir[r.namaSopir]);
-
-  const handleAjukanOtorisasi = async () => {
-    if (!semuaSopirDiceklis || !profile) return;
-    setLoadingPengajuan(true);
-    const client = getSupabaseBrowserClient();
-    const { data, error } = await client
-      .from("pengajuan_otorisasi")
-      .insert({
-        diajukan_oleh: profile.id,
-        status: "PENDING",
-        tanggal_mulai: rekapDateFilter.tanggalMulai || null,
-        tanggal_akhir: rekapDateFilter.tanggalAkhir || null,
-        jenis_rekap: REKAP_TAB_LABEL[rekapTab],
-      })
-      .select()
-      .single();
-    if (!error && data) {
-      setPengajuanId(data.id);
-      setPengajuanStatus("PENDING");
-      const { data: masters } = await client.from("profiles").select("id").eq("role", "ID_MASTER");
-      if (masters) {
-        await client.from("notifikasi").insert(
-          masters.map((m: { id: string }) => ({
-            untuk_user: m.id,
-            judul: "Pengajuan Otorisasi Baru",
-            pesan: `${profile.email} mengajukan otorisasi rekap "${REKAP_TAB_LABEL[rekapTab]}".`,
-            link: "/dashboard",
-            tipe: "PENGAJUAN",
-          })),
-        );
-      }
-      alert("Pengajuan berhasil dikirim ke ID Master!");
-    }
-    setLoadingPengajuan(false);
-  };
-
-  const handleBatalkanPengajuan = async () => {
-    if (!pengajuanId || pengajuanStatus !== "PENDING") return;
-    if (!confirm("Batalkan pengajuan otorisasi ini? Kamu bisa mengajukan ulang setelah memperbaiki rekap.")) return;
-    setLoadingPengajuan(true);
-    const client = getSupabaseBrowserClient();
-    await client.from("pengajuan_otorisasi").delete().eq("id", pengajuanId);
-    setPengajuanId(null);
-    setPengajuanStatus(null);
-    setPrintTokenExp(null);
-    setCeklisSopir({});
-    setLoadingPengajuan(false);
-  };
-
-  const handleOtorisasi = async (disetujui: boolean) => {
-    if (!pengajuanId || !profile) return;
-    setLoadingPengajuan(true);
-    const client = getSupabaseBrowserClient();
-    await client.rpc("proses_otorisasi", {
-      p_pengajuan_id: pengajuanId,
-      p_disetujui: disetujui,
-      p_catatan: catatanOtorisasi || null,
-    });
-    setShowOtorisasiModal(false);
-    setCatatanOtorisasi("");
-    setLoadingPengajuan(false);
-    alert(disetujui ? "Pengajuan disetujui!" : "Pengajuan ditolak.");
-  };
-
-  const fetchPengajuanTerbaru = async () => {
-    if (!profile || profile.role === "ADMIN_CABANG") return;
-    const client = getSupabaseBrowserClient();
-    if (profile.role === "ADMIN_PUSAT") {
-      const { data } = await client
-        .from("pengajuan_otorisasi")
-        .select("*")
-        .eq("diajukan_oleh", profile.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-      if (data) {
-        setPengajuanId(data.id);
-        setPengajuanStatus(data.status);
-        setPrintTokenExp(data.print_token_exp);
-      }
-    }
-  };
-  const fetchOtorisasiList = async () => {
-    if (!cloud || profile?.role !== "ID_MASTER") return;
-    setOtorisasiLoading(true);
-    try {
-      const client = getSupabaseBrowserClient();
-      const { data, error } = await client
-        .from("pengajuan_otorisasi")
-        .select("*, profiles!pengajuan_otorisasi_diajukan_oleh_fkey(id, email, full_name, role)")
-        .order("created_at", { ascending: false });
-      if (error) {
-        console.error("fetchOtorisasiList error:", error.message, error.code);
-        setDataLoadError("Gagal memuat daftar pengajuan: " + error.message);
-      } else {
-        setOtorisasiList((data ?? []) as PengajuanOtorisasi[]);
-      }
-    } finally {
-      setOtorisasiLoading(false);
-    }
-  };
-
-  const handleProsesOtorisasiMaster = async (disetujui: boolean) => {
-    if (!selectedPengajuanId) return;
-    setOtorisasiActionLoading(true);
-    try {
-      const client = getSupabaseBrowserClient();
-      const { error } = await client.rpc("proses_otorisasi", {
-        p_pengajuan_id: selectedPengajuanId,
-        p_disetujui: disetujui,
-        p_catatan: otorisasiCatatan || null,
-      });
-      if (error) throw error;
-      setOtorisasiCatatan("");
-      await fetchOtorisasiList();
-    } catch (err) {
-      alert("Gagal memproses: " + (err instanceof Error ? err.message : String(err)));
-    } finally {
-      setOtorisasiActionLoading(false);
-    }
-  };
-
-  const pendingOtorisasiCount = otorisasiList.filter((p) => p.status === "PENDING").length;
 
   const mainNavItems = useMemo(() => {
     if (profile?.role === "ADMIN_CABANG") return MAIN_MENU.filter((m) => m.id !== "dashboard");
     // Admin Pusat hanya melihat & mengajukan otorisasi rekap, tidak input ritase
     if (profile?.role === "ADMIN_PUSAT") return MAIN_MENU.filter((m) => m.id !== "inputRitase");
-    if (profile?.role === "ID_MASTER") return [...MAIN_MENU, ...OTORISASI_MENU];
+    if (profile?.role === "ID_MASTER") return MAIN_MENU;
     return MAIN_MENU;
   }, [profile?.role]);
 
@@ -1221,28 +1064,13 @@ export function DashboardShell() {
             </p>
           </div>
         </div>
-        <MenuGroup items={mainNavItems} activeMenu={activeMenu} onChange={handleMenuChange} badges={{ otorisasi: pendingOtorisasiCount }} />
+        <MenuGroup items={mainNavItems} activeMenu={activeMenu} onChange={handleMenuChange} />
         <p className="mt-5 mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Aset</p>
         <MenuGroup items={ASET_MENU} activeMenu={activeMenu} onChange={setActiveMenu} />
         <div className="mt-5">
           <MenuGroup items={bottomNavItems} activeMenu={activeMenu} onChange={handleMenuChange} />
         </div>
       </aside>
-      {showOtorisasiModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-            <h2 className="text-lg font-semibold mb-4">Proses Otorisasi</h2>
-            <p className="text-sm text-slate-600 mb-4">Setujui atau tolak pengajuan rekap dari Admin Pusat.</p>
-            <label className="text-xs font-medium text-slate-600 block mb-1">Catatan (opsional)</label>
-            <textarea value={catatanOtorisasi} onChange={e => setCatatanOtorisasi(e.target.value)} rows={3} className="input w-full mb-4" placeholder="Tambahkan catatan jika perlu..." />
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowOtorisasiModal(false)} className="btn-secondary h-10 px-4">Batal</button>
-              <button onClick={() => handleOtorisasi(false)} className="h-10 px-4 rounded-lg bg-red-500 text-white font-semibold">Tolak</button>
-              <button onClick={() => handleOtorisasi(true)} className="h-10 px-4 rounded-lg bg-green-600 text-white font-semibold">Setujui</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {settingsPasswordModalOpen && !cloud && (
         <SettingsAccessModal
@@ -1431,154 +1259,6 @@ export function DashboardShell() {
             </>
           )}
 
-          {/* ── PANEL OTORISASI (ID_MASTER) ── */}
-          {activeMenu === "otorisasi" && profile?.role === "ID_MASTER" && (
-            <>
-              <PageTitle title="Panel Otorisasi" subtitle="Kelola pengajuan otorisasi dari Admin Pusat" />
-
-              {/* Filter status */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {(["SEMUA", "PENDING", "DISETUJUI", "DITOLAK"] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setOtorisasiFilter(s)}
-                    className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${
-                      otorisasiFilter === s
-                        ? "border-teal-600 bg-teal-600 text-white"
-                        : "border-slate-300 bg-white text-slate-600 hover:border-teal-400"
-                    }`}
-                  >
-                    {s}
-                    {s !== "SEMUA" && (
-                      <span className="ml-1.5 opacity-70">
-                        ({otorisasiList.filter((p) => p.status === s).length})
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
-                {/* Daftar pengajuan */}
-                <div className="flex flex-col gap-3">
-                  {otorisasiLoading ? (
-                    <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">Memuat...</div>
-                  ) : (otorisasiFilter === "SEMUA" ? otorisasiList : otorisasiList.filter((p) => p.status === otorisasiFilter)).length === 0 ? (
-                    <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">Tidak ada pengajuan</div>
-                  ) : (
-                    (otorisasiFilter === "SEMUA" ? otorisasiList : otorisasiList.filter((p) => p.status === otorisasiFilter)).map((p) => {
-                      const statusCfg = {
-                        PENDING:   { bg: "bg-amber-50 text-amber-800 border-amber-200", dot: "bg-amber-400", label: "Menunggu" },
-                        DISETUJUI: { bg: "bg-green-50 text-green-800 border-green-200", dot: "bg-green-500", label: "Disetujui" },
-                        DITOLAK:   { bg: "bg-red-50 text-red-800 border-red-200", dot: "bg-red-500", label: "Ditolak" },
-                      }[p.status];
-                      return (
-                        <button
-                          key={p.id}
-                          onClick={() => setSelectedPengajuanId(p.id === selectedPengajuanId ? null : p.id)}
-                          className={`w-full rounded-xl border p-4 text-left transition hover:shadow-sm ${
-                            selectedPengajuanId === p.id
-                              ? "border-teal-400 bg-teal-50 shadow-sm"
-                              : "border-slate-200 bg-white"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate font-semibold text-sm text-slate-800">
-                                {(p.profiles as { nama?: string; email?: string } | undefined)?.nama ?? (p.profiles as { nama?: string; email?: string } | undefined)?.email ?? "Admin Pusat"}
-                              </p>
-                              <p className="mt-0.5 text-xs text-slate-500">
-                                {p.jenis_rekap}
-                                {p.tanggal_mulai && ` · ${p.tanggal_mulai} s/d ${p.tanggal_akhir}`}
-                              </p>
-                              <p className="mt-1 text-[11px] text-slate-400">
-                                {new Date(p.created_at).toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                              </p>
-                            </div>
-                            <span className={`shrink-0 flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusCfg.bg}`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${statusCfg.dot}`} />
-                              {statusCfg.label}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Panel detail */}
-                {selectedPengajuanId ? (() => {
-                  const sel = otorisasiList.find((p) => p.id === selectedPengajuanId);
-                  if (!sel) return null;
-                  return (
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-4 lg:self-start">
-                      <h3 className="mb-4 font-semibold text-slate-800">Detail Pengajuan</h3>
-                      <dl className="space-y-2 text-sm">
-                        {([
-                          ["Pengaju", (sel.profiles as { nama?: string } | undefined)?.nama ?? "-"],
-                          ["Email",  (sel.profiles as { email?: string } | undefined)?.email ?? "-"],
-                          ["Jenis Rekap", sel.jenis_rekap],
-                          ["Periode", sel.tanggal_mulai ? `${sel.tanggal_mulai} s/d ${sel.tanggal_akhir}` : "Semua tanggal"],
-                          ["Diajukan", new Date(sel.created_at).toLocaleString("id-ID")],
-                        ] as [string, string][]).map(([k, v]) => (
-                          <div key={k} className="flex gap-2">
-                            <dt className="w-28 shrink-0 text-slate-500">{k}</dt>
-                            <dd className="font-medium text-slate-800 break-all">{v}</dd>
-                          </div>
-                        ))}
-                        {sel.catatan && (
-                          <div className="flex gap-2">
-                            <dt className="w-28 shrink-0 text-slate-500">Catatan</dt>
-                            <dd className="text-slate-700">{sel.catatan}</dd>
-                          </div>
-                        )}
-                      </dl>
-
-                      {sel.status === "PENDING" ? (
-                        <div className="mt-5">
-                          <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                            Catatan (opsional)
-                          </label>
-                          <textarea
-                            value={otorisasiCatatan}
-                            onChange={(e) => setOtorisasiCatatan(e.target.value)}
-                            rows={3}
-                            placeholder="Tambahkan catatan jika diperlukan..."
-                            className="input w-full resize-y text-sm"
-                          />
-                          <div className="mt-3 flex gap-2">
-                            <button
-                              onClick={() => void handleProsesOtorisasiMaster(false)}
-                              disabled={otorisasiActionLoading}
-                              className="flex-1 rounded-lg bg-red-500 py-2.5 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50"
-                            >
-                              ❌ Tolak
-                            </button>
-                            <button
-                              onClick={() => void handleProsesOtorisasiMaster(true)}
-                              disabled={otorisasiActionLoading}
-                              className="flex-1 rounded-lg bg-teal-600 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
-                            >
-                              ✅ Setujui
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className={`mt-4 rounded-lg p-3 text-sm ${sel.status === "DISETUJUI" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"}`}>
-                          {sel.status === "DISETUJUI" ? "✅ Disetujui" : "❌ Ditolak"} pada{" "}
-                          {sel.diproses_at ? new Date(sel.diproses_at).toLocaleString("id-ID") : "-"}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })() : (
-                  <div className="hidden rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-400 lg:flex lg:items-center lg:justify-center">
-                    Pilih pengajuan di sebelah kiri untuk melihat detail
-                  </div>
-                )}
-              </div>
-            </>
-          )}
 
           {activeMenu === "personil" && (
             <>
@@ -2091,7 +1771,7 @@ export function DashboardShell() {
                       </button>
                       {profile?.role === "ADMIN_CABANG" ? (
                         <span className="text-xs text-slate-400 self-center">Tidak ada akses print</span>
-                      ) : (profile?.role === "ADMIN_PUSAT" && canPrint) || profile?.role === "ID_MASTER" ? (
+                      ) : profile?.role === "ADMIN_PUSAT" || profile?.role === "ID_MASTER" ? (
                         <button
                           type="button"
                           className="btn-primary inline-flex h-11 items-center gap-2 px-4"
@@ -2100,8 +1780,6 @@ export function DashboardShell() {
                           <Printer className="h-4 w-4" aria-hidden />
                           Print
                         </button>
-                      ) : profile?.role === "ADMIN_PUSAT" ? (
-                        <span className="text-xs text-amber-600 self-center">Print terkunci — ajukan otorisasi</span>
                       ) : null}
                     </div>
                   </div>
@@ -2110,51 +1788,7 @@ export function DashboardShell() {
                   <span className="font-semibold text-slate-900">Ringkasan periode: </span>
                   {formatRekapPeriode(rekapDateFilter.tanggalMulai, rekapDateFilter.tanggalAkhir)}
                 </div>
-              </section>              {/* Banner status otorisasi */}
-              {profile?.role === "ADMIN_PUSAT" && pengajuanStatus && (
-                <div className={`rounded-xl border p-4 mb-2 flex items-center justify-between flex-wrap gap-3 ${pengajuanStatus === "DISETUJUI" ? "bg-green-50 border-green-200" : pengajuanStatus === "DITOLAK" ? "bg-red-50 border-red-200" : "bg-yellow-50 border-yellow-200"}`}>
-                  <div>
-                    <div className="text-sm font-semibold">
-                      Status: {pengajuanStatus === "DISETUJUI" ? "✅ Disetujui" : pengajuanStatus === "DITOLAK" ? "❌ Ditolak" : "⏳ Menunggu Otorisasi"}
-                    </div>
-                    {pengajuanStatus === "DITOLAK" && (
-                      <div className="text-xs text-red-700 mt-1">Pengajuan ditolak. Perbaiki rekap dan ajukan ulang.</div>
-                    )}
-                  </div>
-                  {pengajuanStatus === "PENDING" && (
-                    <button
-                      onClick={handleBatalkanPengajuan}
-                      disabled={loadingPengajuan}
-                      className="h-9 px-4 rounded-lg text-sm font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50"
-                    >
-                      {loadingPengajuan ? "Membatalkan..." : "Batalkan Pengajuan"}
-                    </button>
-                  )}
-                  {pengajuanStatus === "DITOLAK" && (
-                    <button
-                      onClick={() => { setPengajuanId(null); setPengajuanStatus(null); setPrintTokenExp(null); setCeklisSopir({}); }}
-                      className="h-9 px-4 rounded-lg text-sm font-semibold text-white bg-slate-500 hover:bg-slate-600"
-                    >
-                      Ajukan Ulang
-                    </button>
-                  )}
-                </div>
-              )}
-              {profile?.role === "ADMIN_PUSAT" && !pengajuanStatus && rekapSopir.length > 0 && (
-                <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 mb-2 flex items-center justify-between flex-wrap gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-yellow-800">Verifikasi sebelum pengajuan</div>
-                    <div className="text-xs text-yellow-700 mt-1">Ceklis semua baris ({Object.values(ceklisSopir).filter(Boolean).length}/{rekapSopir.length} diceklis){semuaSopirDiceklis && " Semua terverifikasi"}</div>
-                  </div>
-                  <button onClick={handleAjukanOtorisasi} disabled={!semuaSopirDiceklis || loadingPengajuan} className={`h-10 px-5 rounded-lg text-sm font-semibold text-white ${semuaSopirDiceklis ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-300 cursor-not-allowed"}`}>{loadingPengajuan ? "Mengirim..." : "Pengajuan Otorisasi"}</button>
-                </div>
-              )}
-              {profile?.role === "ID_MASTER" && pengajuanId && pengajuanStatus === "PENDING" && (
-                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-2 flex items-center justify-between flex-wrap gap-3">
-                  <div className="text-sm font-semibold text-blue-800">Ada pengajuan otorisasi menunggu persetujuan</div>
-                  <button onClick={() => setShowOtorisasiModal(true)} className="h-10 px-5 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700">Proses Otorisasi</button>
-                </div>
-              )}
+              </section>
 
 
               <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm print:hidden">
@@ -2177,79 +1811,27 @@ export function DashboardShell() {
               </p>
 
               {rekapTab === "sopir" && (
-                <>
-                  {profile?.role === "ADMIN_PUSAT" && !pengajuanStatus && (
-                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm mb-2">
-                      <table className="w-full text-xs">
-                        <thead className="bg-slate-100">
-                          <tr>
-                            <th className="px-3 py-2 text-center w-10">Cek</th>
-                            <th className="px-3 py-2 text-left">Nama Sopir</th>
-                            <th className="px-3 py-2 text-left">Status</th>
-                            <th className="px-3 py-2 text-right">Ritase</th>
-                            <th className="px-3 py-2 text-right">KM</th>
-                            <th className="px-3 py-2 text-right">Upah Ritase</th>
-                            <th className="px-3 py-2 text-right">Upah Pokok</th>
-                            <th className="px-3 py-2 text-right">Upah Sopir</th>
-                            <th className="px-3 py-2 text-right">Solar</th>
-                            <th className="px-3 py-2 text-right">Total Biaya</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rekapSopir.map((r, idx) => (
-                            <tr key={idx} className={`border-t border-slate-100 ${ceklisSopir[r.namaSopir] ? "bg-green-50" : ""}`}>
-                              <td className="px-3 py-2 text-center">
-                                <input type="checkbox" checked={!!ceklisSopir[r.namaSopir]} onChange={() => setCeklisSopir(prev => ({ ...prev, [r.namaSopir]: !prev[r.namaSopir] }))} className="w-4 h-4 cursor-pointer accent-green-600" />
-                              </td>
-                              <td className="px-3 py-2">{r.namaSopir}</td>
-                              <td className="px-3 py-2">{r.statusSopir}</td>
-                              <td className="px-3 py-2 text-right">{r.totalRitase}</td>
-                              <td className="px-3 py-2 text-right">{r.totalKm}</td>
-                              <td className="px-3 py-2 text-right">{formatRupiah(r.totalUpahRitase)}</td>
-                              <td className="px-3 py-2 text-right">{formatRupiah(r.totalUpahPokok)}</td>
-                              <td className="px-3 py-2 text-right">{formatRupiah(r.totalUpahSopir)}</td>
-                              <td className="px-3 py-2 text-right">{formatRupiah(r.totalSolar)}</td>
-                              <td className="px-3 py-2 text-right font-semibold">{formatRupiah(r.totalBiaya)}</td>
-                            </tr>
-                          ))}
-                          <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
-                            <td /><td className="px-3 py-2">Jumlah</td><td />
-                            <td className="px-3 py-2 text-right">{rekapGrandTotals.totalRitase}</td>
-                            <td className="px-3 py-2 text-right">{rekapGrandTotals.totalKm}</td>
-                            <td className="px-3 py-2 text-right">{formatRupiah(rekapGrandTotals.totalUpahRitase)}</td>
-                            <td className="px-3 py-2 text-right">{formatRupiah(rekapGrandTotals.totalUpahPokok)}</td>
-                            <td className="px-3 py-2 text-right">{formatRupiah(rekapGrandTotals.totalUpahSopir)}</td>
-                            <td className="px-3 py-2 text-right">{formatRupiah(rekapGrandTotals.totalSolar)}</td>
-                            <td className="px-3 py-2 text-right">{formatRupiah(rekapGrandTotals.totalBiaya)}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  {(profile?.role !== "ADMIN_PUSAT" || pengajuanStatus) && (
-                    <RekapTable
-                      headers={["Nama Sopir", "Status Sopir", "Total Ritase", "Total KM", "Total Upah Ritase", "Total Upah Pokok", "Total Upah Sopir", "Total Solar", "Total Biaya"]}
-                      numericMinCol={2}
-                      rows={rekapSopir.map((r) => [r.namaSopir, r.statusSopir, r.totalRitase, r.totalKm, formatRupiah(r.totalUpahRitase), formatRupiah(r.totalUpahPokok), formatRupiah(r.totalUpahSopir), formatRupiah(r.totalSolar), formatRupiah(r.totalBiaya)])}
-                      footerRow={[
-                        "Jumlah",
-                        "",
-                        rekapGrandTotals.totalRitase,
-                        rekapGrandTotals.totalKm,
-                        formatRupiah(rekapGrandTotals.totalUpahRitase),
-                        formatRupiah(rekapGrandTotals.totalUpahPokok),
-                        formatRupiah(rekapGrandTotals.totalUpahSopir),
-                        formatRupiah(rekapGrandTotals.totalSolar),
-                        formatRupiah(rekapGrandTotals.totalBiaya),
-                      ]}
-                      onRowClick={(idx) => {
-                        const row = rekapSopir[idx];
-                        setDetailTitle(`Detail Sopir: ${row.namaSopir}`);
-                        setDetailList(rekapFilteredTransactions.filter((t) => t.namaSopir === row.namaSopir && t.statusSopir === row.statusSopir));
-                      }}
-                    />
-                  )}
-                </>
+                <RekapTable
+                  headers={["Nama Sopir", "Status Sopir", "Total Ritase", "Total KM", "Total Upah Ritase", "Total Upah Pokok", "Total Upah Sopir", "Total Solar", "Total Biaya"]}
+                  numericMinCol={2}
+                  rows={rekapSopir.map((r) => [r.namaSopir, r.statusSopir, r.totalRitase, r.totalKm, formatRupiah(r.totalUpahRitase), formatRupiah(r.totalUpahPokok), formatRupiah(r.totalUpahSopir), formatRupiah(r.totalSolar), formatRupiah(r.totalBiaya)])}
+                  footerRow={[
+                    "Jumlah",
+                    "",
+                    rekapGrandTotals.totalRitase,
+                    rekapGrandTotals.totalKm,
+                    formatRupiah(rekapGrandTotals.totalUpahRitase),
+                    formatRupiah(rekapGrandTotals.totalUpahPokok),
+                    formatRupiah(rekapGrandTotals.totalUpahSopir),
+                    formatRupiah(rekapGrandTotals.totalSolar),
+                    formatRupiah(rekapGrandTotals.totalBiaya),
+                  ]}
+                  onRowClick={(idx) => {
+                    const row = rekapSopir[idx];
+                    setDetailTitle(`Detail Sopir: ${row.namaSopir}`);
+                    setDetailList(rekapFilteredTransactions.filter((t) => t.namaSopir === row.namaSopir && t.statusSopir === row.statusSopir));
+                  }}
+                />
               )}
               {rekapTab === "paket" && (
                 <RekapTable
