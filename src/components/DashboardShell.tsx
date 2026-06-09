@@ -2884,9 +2884,9 @@ function DetailList({ title, rows }: { title: string; rows: SimpleTrip[] }) {
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <h3 className="mb-2 text-sm font-semibold">{title}</h3>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-xs">
+        <table className="w-full min-w-[1000px] text-xs">
           <thead className="bg-slate-100 text-slate-600">
-            <tr><th className="px-2 py-2 text-left">Tanggal</th><th className="px-2 py-2 text-left">Sopir</th><th className="px-2 py-2 text-left">Muatan</th><th className="px-2 py-2 max-w-[200px] text-left">Keterangan</th><th className="px-2 py-2 text-right">Total Upah</th><th className="px-2 py-2 text-right">Solar</th><th className="px-2 py-2 text-right">Total Biaya</th></tr>
+            <tr><th className="px-2 py-2 text-left">Tanggal</th><th className="px-2 py-2 text-left">Sopir</th><th className="px-2 py-2 text-left">Muatan</th><th className="px-2 py-2 text-left">Rute</th><th className="px-2 py-2 max-w-[200px] text-left">Keterangan</th><th className="px-2 py-2 text-right">Total Upah</th><th className="px-2 py-2 text-right">Solar</th><th className="px-2 py-2 text-right">Total Biaya</th></tr>
           </thead>
           <tbody>
             {rows.map((r) => (
@@ -2894,6 +2894,7 @@ function DetailList({ title, rows }: { title: string; rows: SimpleTrip[] }) {
                 <td className="px-2 py-2">{r.tanggal}</td>
                 <td className="px-2 py-2">{r.namaSopir}</td>
                 <td className="px-2 py-2">{r.namaPaketPekerjaan}</td>
+                <td className="px-2 py-2 whitespace-nowrap">{r.lokasiAmbil || "—"} → {r.lokasiKirim || "—"}</td>
                 <td className="px-2 py-2 max-w-[200px] break-words" title={formatKeteranganFallback(r.keterangan)}>{formatKeteranganTableCell(r.keterangan)}</td>
                 <td className="px-2 py-2 text-right">{formatRupiah(r.totalUpahSopir)}</td>
                 <td className="px-2 py-2 text-right">{formatRupiah(r.totalSolar)}</td>
