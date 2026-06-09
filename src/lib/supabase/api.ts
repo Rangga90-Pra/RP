@@ -147,8 +147,9 @@ export async function upsertTransaction(client: SupabaseClient, trip: SimpleTrip
 }
 
 export async function deleteTransaction(client: SupabaseClient, id: string): Promise<void> {
-  const { error } = await client.from("transactions").delete().eq("id", id);
+  const { error, count } = await client.from("transactions").delete({ count: "exact" }).eq("id", id);
   if (error) throw error;
+  if (count === 0) throw new Error("Penghapusan ditolak oleh database. Pastikan akun memiliki izin DELETE di Supabase.");
 }
 
 export async function fetchAppSettings(client: SupabaseClient): Promise<AppSettings> {
